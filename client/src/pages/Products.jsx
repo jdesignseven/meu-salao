@@ -34,7 +34,7 @@ export default function Products() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [stockMovements, setStockMovements] = useState([]);
   const [formData, setFormData] = useState({
-    name: '', description: '', group: '', type: 'outro', cost: '', sale_price: '',
+    name: '', description: '', product_group: '', type: 'outro', cost: '', sale_price: '',
     unit: 'un', stock: '', min_stock: '', photo: '', active: 1
   });
   const [stockForm, setStockForm] = useState({ type: 'entrada', quantity: '', reason: '' });
@@ -93,7 +93,7 @@ export default function Products() {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        name: product.name, description: product.description || '', group: product.group || '',
+        name: product.name, description: product.description || '', product_group: product.product_group || '',
         type: product.type || 'outro', cost: product.cost, sale_price: product.sale_price,
         unit: product.unit || 'un', stock: product.stock, min_stock: product.min_stock,
         photo: product.photo || '', active: product.active
@@ -102,7 +102,7 @@ export default function Products() {
     } else {
       setEditingProduct(null);
       setFormData({
-        name: '', description: '', group: '', type: 'outro', cost: '', sale_price: '',
+        name: '', description: '', product_group: '', type: 'outro', cost: '', sale_price: '',
         unit: 'un', stock: '', min_stock: '', photo: '', active: 1
       });
       setPhotoPreview('');
@@ -219,7 +219,7 @@ export default function Products() {
                     <td style={{fontSize: '12px', fontWeight: 'bold', color: '#3498db', fontFamily: 'monospace'}}>{p.code}</td>
                     <td><strong>{p.name}</strong></td>
                     <td style={{fontSize: '16px'}} title={getTypeLabel(p.type)}>{getTypeIcon(p.type)}</td>
-                    <td>{p.group || '-'}</td>
+                    <td>{p.product_group || '-'}</td>
                     <td style={{color: '#777'}}>R$ {p.cost.toFixed(2)}</td>
                     <td style={{fontWeight: 'bold', color: '#27ae60'}}>R$ {p.sale_price.toFixed(2)}</td>
                     <td style={{fontSize: '12px', color: '#555'}}>{p.unit}</td>
@@ -280,7 +280,7 @@ export default function Products() {
               </div>
 
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                <div className="form-group"><label>Grupo *</label><input type="text" value={formData.group} onChange={(e) => setFormData({...formData, group: e.target.value})} placeholder="Ex: Shampoo, Coloração" required style={{fontSize: '13px', padding: '6px 10px'}} /></div>
+                <div className="form-group"><label>Grupo *</label><input type="text" value={formData.product_group} onChange={(e) => setFormData({...formData, product_group: e.target.value})} placeholder="Ex: Shampoo, Coloração" required style={{fontSize: '13px', padding: '6px 10px'}} /></div>
                 <div className="form-group"><label>Unidade de Medida *</label><select value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} style={{fontSize: '13px', padding: '6px 10px'}}>{unitOptions.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
               </div>
 
