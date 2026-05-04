@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Cake, DollarSign, TrendingUp, Users, Calendar, Trophy, UserCircle2, ArrowRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -9,10 +10,13 @@ function getAuthHeader() {
   return { Authorization: `Bearer ${token}` };
 }
 
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#d946ef'];
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [financialSummary, setFinancialSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
@@ -21,13 +25,13 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const res = await fetch(`${API_URL}/dashboard/overview`, {
-        headers: getAuthHeader()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
+      const monthStr = `${selectedYear}-${selectedMonth}`;
+      const [statsRes, financialRes] = await Promise.all([
+        fetch(`${API_URL}/dashboard/overview`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/financial/summary?month=${monthStr}`, { headers: getAuthHeader() })
+      ]);
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (financialRes.ok) setFinancialSummary(await financialRes.json());
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
@@ -35,23 +39,115 @@ export default function Dashboard() {
     }
   };
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, [selectedMonth, selectedYear]);
+
   if (loading) return <div className="loading">Carregando...</div>;
   if (!stats) return <div className="error">Erro ao carregar dados</div>;
 
-  const months = Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0'));
-  const years = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016];
+  const dailyFlowData = financialSummary ? financialSummary.dailyFlow.map(d => ({
+    ...d,
+    date: d.date.split('-')[2],
+    entrada: Math.round(d.entrada),
+    saida: Math.round(d.saida),
+    saldo: Math.round(d.saldo)
+  })) : [];
+
+  const categoryData = financialSummary ? financialSummary.byCategory.map(c => ({
+    name: c.name,
+    value: Math.round(c.total),
+    color: c.color || '#3b82f6'
+  })) : [];
+
+  const monthLabel = new Date(`${selectedYear}-${selectedMonth}-01`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   return (
     <div>
       <div className="page-header">
         <h1>Dashboard</h1>
         <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px'}}>
-            {months.map(m => <option key={m} value={m}>{m}</option>)}
+          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', background: 'white'}}>
+            {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} style={{padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px'}}>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} style={{padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', background: 'white'}}>
+            {[2026, 2025, 2024, 2023, 2022].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+        </div>
+      </div>
+
+      {/* Cards de Resumo Financeiro */}
+      {financialSummary && (
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px'}}>
+          <div style={{padding: '20px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'}}>
+            <p style={{fontSize: '13px', color: '#6b7280', margin: '0 0 4px'}}>Receitas</p>
+            <p style={{fontSize: '22px', fontWeight: 700, color: '#16a34a', margin: 0}}>R$ {financialSummary.totalReceitas.toFixed(2).replace('.', ',')}</p>
+          </div>
+          <div style={{padding: '20px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'}}>
+            <p style={{fontSize: '13px', color: '#6b7280', margin: '0 0 4px'}}>Despesas</p>
+            <p style={{fontSize: '22px', fontWeight: 700, color: '#dc2626', margin: 0}}>R$ {financialSummary.totalDespesas.toFixed(2).replace('.', ',')}</p>
+          </div>
+          <div style={{padding: '20px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'}}>
+            <p style={{fontSize: '13px', color: '#6b7280', margin: '0 0 4px'}}>Saldo</p>
+            <p style={{fontSize: '22px', fontWeight: 700, color: financialSummary.saldo >= 0 ? '#16a34a' : '#dc2626', margin: 0}}>R$ {financialSummary.saldo.toFixed(2).replace('.', ',')}</p>
+          </div>
+          <div style={{padding: '20px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'}}>
+            <p style={{fontSize: '13px', color: '#6b7280', margin: '0 0 4px'}}>Contas a Pagar</p>
+            <p style={{fontSize: '22px', fontWeight: 700, color: '#f59e0b', margin: 0}}>{financialSummary.overdueCount}</p>
+          </div>
+        </div>
+      )}
+
+      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px'}}>
+        {/* Gráfico de Fluxo Diário */}
+        <div className="table-container">
+          <div style={{padding: '20px', borderBottom: '1px solid #e5e7eb'}}>
+            <h3 style={{margin: 0, fontSize: '16px', fontWeight: 600}}>Fluxo Diário - {monthLabel}</h3>
+          </div>
+          <div style={{padding: '16px', height: '280px'}}>
+            {dailyFlowData.length > 0 && dailyFlowData.some(d => d.entrada > 0 || d.saida > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dailyFlowData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{fontSize: 11}} />
+                  <YAxis tick={{fontSize: 11}} tickFormatter={(v) => `R$${v}`} />
+                  <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} labelFormatter={(label) => `Dia ${label}`} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                  <Legend />
+                  <Area type="monotone" dataKey="entrada" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.3} name="Entradas" />
+                  <Area type="monotone" dataKey="saida" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} name="Saídas" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', background: '#f9fafb', borderRadius: '12px'}}>
+                Sem dados para o período
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Gráfico por Categoria */}
+        <div className="table-container">
+          <div style={{padding: '20px', borderBottom: '1px solid #e5e7eb'}}>
+            <h3 style={{margin: 0, fontSize: '16px', fontWeight: 600}}>Receitas por Categoria</h3>
+          </div>
+          <div style={{padding: '16px', height: '280px'}}>
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={categoryData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', background: '#f9fafb', borderRadius: '12px'}}>
+                Sem dados para o período
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -115,8 +211,22 @@ export default function Dashboard() {
                 Não há <strong>faturamento</strong> neste mês.
               </div>
             ) : null}
-            <div style={{height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', background: '#f9fafb', borderRadius: '12px', marginBottom: '16px'}}>
-              Gráfico de vendas (integração pendente)
+            <div style={{height: '200px', marginBottom: '16px'}}>
+              {dailyFlowData.length > 0 && dailyFlowData.some(d => d.entrada > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyFlowData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{fontSize: 11}} />
+                    <YAxis tick={{fontSize: 11}} tickFormatter={(v) => `R$${v}`} />
+                    <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} labelFormatter={(label) => `Dia ${label}`} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                    <Bar dataKey="entrada" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Vendas" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', background: '#f9fafb', borderRadius: '12px'}}>
+                  Sem dados para o período
+                </div>
+              )}
             </div>
             <div style={{textAlign: 'right', fontSize: '16px', fontWeight: 600}}>
               Total Geral: <span style={{color: '#111827'}}>R$ {stats.monthSales.toFixed(2).replace('.', ',')}</span>
