@@ -504,6 +504,74 @@ const ANAMNESE_OPTIONS = {
   frequencia_lavagem: { diaria: 'Diária', dia_sim_nao: 'Dia sim, dia não', '2x_semana': '2x por semana', '1x_semana': '1x por semana' }
 };
 
+const MULTI_OPTS = {
+  problemas: ['Queda', 'Quebra', 'Caspa', 'Oleosidade excessiva', 'Ressecamento', 'Coceira', 'Dermatite', 'Outro'],
+  quimicos: ['Progressiva', 'Botox capilar', 'Selagem', 'Relaxamento', 'Descoloração/Luzes', 'Coloração', 'Alisamento', 'Nenhum', 'Outro'],
+  produtos: ['Shampoo', 'Condicionador', 'Máscara de hidratação', 'Óleo capilar', 'Leave-in', 'Protetor térmico', 'Finalizador', 'Nenhum', 'Outro'],
+  alergias: ['Parafenilenodiamina', 'Amônia', 'Peróxido', 'Álcool', 'Látex', 'Nenhuma', 'Outra'],
+  doencas: ['Diabetes', 'Hipertensão', 'Tireoide', 'Dermatite seborreica', 'Psoríase', 'Alopecia', 'Anemia', 'Nenhuma', 'Outra'],
+  medicamentos: ['Anticoncepcional', 'Isotretinoína (Roacutan)', 'Finasterida', 'Minoxidil', 'Antidepressivo', 'Ansiolítico', 'Nenhum', 'Outro'],
+  objetivos: ['Hidratar', 'Fortalecer', 'Reduzir queda', 'Crescimento', 'Recuperar químicos', 'Mudar visual', 'Manutenção', 'Outro']
+};
+
+function CheckboxGroup({ field, form, onChange }) {
+  const opts = MULTI_OPTS[field] || [];
+  const vals = Array.isArray(form[field]) ? form[field] : [];
+  const outroKey = field + '_outro';
+
+  const toggle = (val) => {
+    const next = vals.includes(val) ? vals.filter(x => x !== val) : [...vals, val];
+    onChange({ ...form, [field]: next });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '13px' }}>
+      {opts.map(o => {
+        if (o === 'Outro' || o === 'Outra') {
+          return (
+            <div key={o}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', marginBottom: '4px' }}>
+                <input type="checkbox" checked={vals.includes(o)} onChange={() => toggle(o)} />
+                {o}
+              </label>
+              {vals.includes(o) && (
+                <input
+                  type="text"
+                  value={form[outroKey] || ''}
+                  onChange={e => onChange({ ...form, [outroKey]: e.target.value })}
+                  placeholder="Especifique..."
+                  style={{ width: '100%', padding: '4px 6px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', boxSizing: 'border-box' }}
+                />
+              )}
+            </div>
+          );
+        }
+        if (o === 'Nenhum' || o === 'Nenhuma') {
+          return (
+            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={vals.includes(o)} onChange={() => {
+                if (vals.includes(o)) {
+                  onChange({ ...form, [field]: [] });
+                } else {
+                  onChange({ ...form, [field]: [o] });
+                }
+              }} />
+              {o}
+            </label>
+          );
+        }
+        return (
+          <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={vals.includes(o)} onChange={() => toggle(o)}
+              disabled={vals.includes('Nenhum') || vals.includes('Nenhuma')} />
+            {o}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 function AnamneseSection({ client, onUpdate }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -512,10 +580,12 @@ function AnamneseSection({ client, onUpdate }) {
 
   const defaultAnamnese = {
     tipo_cabelo: '', couro_cabeludo: '', problemas: [], frequencia_lavagem: '',
-    finalizadores: false, finalizadores_quais: '', produtos: '',
-    quimicos: '', alergias: '', transplante: false,
-    doencas: '', medicamentos: '', gestante: false,
-    objetivos: '', observacoes: ''
+    finalizadores: false, finalizadores_quais: '', produtos: [],
+    quimicos: [], alergias: [], transplante: false,
+    doencas: [], medicamentos: [], gestante: false,
+    objetivos: [], observacoes: '',
+    produtos_outro: '', quimicos_outro: '', alergias_outro: '',
+    doencas_outro: '', medicamentos_outro: '', objetivos_outro: ''
   };
 
   const [form, setForm] = useState({ ...defaultAnamnese });
@@ -524,25 +594,32 @@ function AnamneseSection({ client, onUpdate }) {
     if (client?.anamnese_capilar) {
       try {
         const parsed = JSON.parse(client.anamnese_capilar || '{}');
-        setForm(prev => ({ ...prev, ...parsed }));
+        const merged = { ...defaultAnamnese };
+        for (const k of Object.keys(parsed)) {
+          if (k.endsWith('_outro')) { merged[k] = parsed[k]; continue; }
+          if (Array.isArray(parsed[k])) { merged[k] = parsed[k]; continue; }
+          if (MULTI_OPTS[k] && typeof parsed[k] === 'string' && parsed[k]) {
+            merged[k] = parsed[k].split(/[,;]\s*/).filter(Boolean);
+          } else {
+            merged[k] = parsed[k];
+          }
+        }
+        setForm(merged);
       } catch { /* ignore */ }
     }
   }, [client]);
 
   if (!client) return null;
 
+  const isFilled = (v) => v !== null && v !== undefined && v !== '' && (!Array.isArray(v) || v.length);
+
   const hasData = Object.entries(form).some(([k, v]) =>
-    k !== 'finalizadores_quais' && v !== null && v !== undefined && v !== '' && (!Array.isArray(v) || v.length)
+    !k.endsWith('_outro') && isFilled(v)
   );
 
-  const handleField = (key, value) => setForm(f => ({ ...f, [key]: value }));
+  const setFormField = (next) => setForm(next);
 
-  const handleCheckboxGroup = (key, val) => {
-    setForm(f => ({
-      ...f,
-      [key]: f[key].includes(val) ? f[key].filter(x => x !== val) : [...f[key], val]
-    }));
-  };
+  const handleField = (key, value) => setForm(f => ({ ...f, [key]: value }));
 
   const handleSave = async () => {
     setSaving(true);
@@ -577,7 +654,20 @@ function AnamneseSection({ client, onUpdate }) {
 
   const inputStyle = { width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '12px', color: '#606060', marginBottom: '4px' };
-  const PROBLEMS = ['Queda', 'Quebra', 'Caspa', 'Oleosidade excessiva', 'Ressecamento', 'Coceira', 'Dermatite', 'Outro'];
+
+  const formatVal = (key, v) => {
+    if (!isFilled(v) && key !== 'finalizadores_quais') return null;
+    if (key === 'finalizadores' || key === 'transplante' || key === 'gestante') return v ? 'Sim' : 'Não';
+    if (Array.isArray(v)) {
+      const outroKey = key + '_outro';
+      const outro = form[outroKey];
+      const items = v.filter(x => x !== 'Outro' && x !== 'Outra');
+      const display = outro ? [...items, outro].join(', ') : items.join(', ');
+      return display || null;
+    }
+    if (ANAMNESE_OPTIONS[key]?.[v]) return ANAMNESE_OPTIONS[key][v];
+    return v || null;
+  };
 
   return (
     <div style={{ marginBottom: '24px', borderTop: '1px solid #e0e0e0', paddingTop: '16px' }}>
@@ -608,12 +698,9 @@ function AnamneseSection({ client, onUpdate }) {
             hasData ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {Object.entries(ANAMNESE_LABELS).map(([key, label]) => {
-                  const v = form[key];
-                  if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) return null;
-                  let display = v;
-                  if (key === 'finalizadores' || key === 'transplante' || key === 'gestante') display = v ? 'Sim' : 'Não';
-                  else if (key === 'problemas' && Array.isArray(v)) display = v.join(', ');
-                  else if (ANAMNESE_OPTIONS[key]?.[v]) display = ANAMNESE_OPTIONS[key][v];
+                  if (key === 'finalizadores_quais') return null;
+                  const display = formatVal(key, form[key]);
+                  if (display === null) return null;
                   return (
                     <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
                       <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
@@ -650,14 +737,7 @@ function AnamneseSection({ client, onUpdate }) {
               </div>
               <div>
                 <label style={labelStyle}>Problemas Capilares</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '13px' }}>
-                  {PROBLEMS.map(p => (
-                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={form.problemas.includes(p)} onChange={() => handleCheckboxGroup('problemas', p)} />
-                      {p}
-                    </label>
-                  ))}
-                </div>
+                <CheckboxGroup field="problemas" form={form} onChange={setFormField} />
               </div>
 
               <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
@@ -680,16 +760,16 @@ function AnamneseSection({ client, onUpdate }) {
 
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Produtos Utilizados</label>
-                <textarea rows={2} value={form.produtos} onChange={e => handleField('produtos', e.target.value)} style={inputStyle} />
+                <CheckboxGroup field="produtos" form={form} onChange={setFormField} />
               </div>
 
               <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
                 <label style={labelStyle}>Químicos / Procedimentos</label>
-                <textarea rows={2} value={form.quimicos} onChange={e => handleField('quimicos', e.target.value)} style={inputStyle} />
+                <CheckboxGroup field="quimicos" form={form} onChange={setFormField} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Alergias</label>
-                <textarea rows={2} value={form.alergias} onChange={e => handleField('alergias', e.target.value)} style={inputStyle} />
+                <CheckboxGroup field="alergias" form={form} onChange={setFormField} />
               </div>
 
               <div>
@@ -717,16 +797,16 @@ function AnamneseSection({ client, onUpdate }) {
 
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Doenças</label>
-                <textarea rows={2} value={form.doencas} onChange={e => handleField('doencas', e.target.value)} style={inputStyle} />
+                <CheckboxGroup field="doencas" form={form} onChange={setFormField} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Medicamentos</label>
-                <textarea rows={2} value={form.medicamentos} onChange={e => handleField('medicamentos', e.target.value)} style={inputStyle} />
+                <CheckboxGroup field="medicamentos" form={form} onChange={setFormField} />
               </div>
 
               <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
                 <label style={labelStyle}>Objetivos</label>
-                <textarea rows={2} value={form.objetivos} onChange={e => handleField('objetivos', e.target.value)} style={inputStyle} />
+                <CheckboxGroup field="objetivos" form={form} onChange={setFormField} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Observações</label>
