@@ -578,6 +578,9 @@ function CheckboxGroup({ field, form, onChange }) {
   );
 }
 
+const MECHA_STATUS = { nao_informado: 'Não Informado', aprovado: 'Aprovado', reprovado: 'Reprovado' };
+const MECHA_COLORS = { nao_informado: '#999', aprovado: '#2e7d32', reprovado: '#c62828' };
+
 function AnamneseSection({ client, onUpdate }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -592,9 +595,9 @@ function AnamneseSection({ client, onUpdate }) {
     objetivos: [], observacoes: '',
     produtos_outro: '', quimicos_outro: '', alergias_outro: '',
     doencas_outro: '', medicamentos_outro: '', objetivos_outro: '',
-    teste_mecha_raiz: '', teste_mecha_raiz_tempo: '',
-    teste_mecha_meio: '', teste_mecha_meio_tempo: '',
-    teste_mecha_pontas: '', teste_mecha_pontas_tempo: ''
+    teste_mecha_raiz: 'nao_informado', teste_mecha_raiz_tempo: '',
+    teste_mecha_meio: 'nao_informado', teste_mecha_meio_tempo: '',
+    teste_mecha_pontas: 'nao_informado', teste_mecha_pontas_tempo: ''
   };
 
   const [form, setForm] = useState({ ...defaultAnamnese });
@@ -732,11 +735,11 @@ function AnamneseSection({ client, onUpdate }) {
                       { key: 'teste_mecha_pontas', label: 'Pontas', tempo: form.teste_mecha_pontas_tempo }
                     ].map(({ key, label, tempo }) => {
                       const v = form[key];
-                      if (!v) return null;
+                      if (v === 'nao_informado' && !tempo) return null;
                       return (
                         <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
                           <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
-                          <span style={{ color: '#333' }}>{v}{tempo ? ` (${tempo} min)` : ''}</span>
+                          <span style={{ color: MECHA_COLORS[v] || '#333', fontWeight: v !== 'nao_informado' ? 600 : 400 }}>{MECHA_STATUS[v] || v}{tempo ? ` — ${tempo}min` : ''}</span>
                         </div>
                       );
                     })}
@@ -855,13 +858,25 @@ function AnamneseSection({ client, onUpdate }) {
               <div style={{ borderTop: '1px solid #eee', paddingTop: '6px', marginTop: '4px' }}>
                 <label style={{ ...labelStyle, fontSize: '14px', fontWeight: 500, color: '#2c3e50', marginBottom: '8px' }}>Teste de Mechas</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  {['raiz', 'meio', 'pontas'].map(part => (
-                    <div key={part} style={{ flex: 1 }}>
-                      <label style={labelStyle}>{part === 'raiz' ? 'Raiz' : part === 'meio' ? 'Meio' : 'Pontas'}</label>
-                      <textarea rows={2} value={form['teste_mecha_' + part]} onChange={e => handleField('teste_mecha_' + part, e.target.value)} placeholder="Observação..." style={inputStyle} />
-                      <input type="number" value={form['teste_mecha_' + part + '_tempo']} onChange={e => handleField('teste_mecha_' + part + '_tempo', e.target.value)} placeholder="Tempo (min)" style={{ ...inputStyle, marginTop: '4px' }} min="0" />
-                    </div>
-                  ))}
+                  {['raiz', 'meio', 'pontas'].map(part => {
+                    const key = 'teste_mecha_' + part;
+                    const tempoKey = key + '_tempo';
+                    const label = part === 'raiz' ? 'Raiz' : part === 'meio' ? 'Meio' : 'Pontas';
+                    return (
+                      <div key={part} style={{ flex: 1 }}>
+                        <label style={labelStyle}>{label}</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+                          {Object.entries(MECHA_STATUS).map(([val, display]) => (
+                            <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                              <input type="radio" checked={form[key] === val} onChange={() => handleField(key, val)} />
+                              <span style={{ color: MECHA_COLORS[val], fontWeight: val !== 'nao_informado' ? 600 : 400 }}>{display}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <input type="number" value={form[tempoKey]} onChange={e => handleField(tempoKey, e.target.value)} placeholder="Tempo (min)" style={{ ...inputStyle, marginTop: '6px' }} min="0" />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
