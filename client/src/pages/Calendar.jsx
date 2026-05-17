@@ -307,6 +307,8 @@ export default function Calendar() {
               <div style={{ gridColumn: 'span 2', fontSize: '14px' }}><strong style={{ color: '#606060' }}>Observações:</strong> {selectedAppointment.notes || '-'}</div>
             </div>
 
+          <AnamneseSection client={clients.find(c => c.id === selectedAppointment.client_id)} onUpdate={fetchData} />
+
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Alterar Status:</label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -359,8 +361,6 @@ export default function Calendar() {
                 </div>
               </div>
             </div>
-
-          <AnamneseSection client={clients.find(c => c.id === selectedAppointment.client_id)} onUpdate={fetchData} />
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowDetails(false); openModal(selectedAppointment); }} style={{
@@ -440,9 +440,9 @@ export default function Calendar() {
                   <option value="concluido">Concluído</option>
                   <option value="cancelado">Cancelado</option>
                 </select>
-              </div>
+            </div>
 
-              <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Observações</label>
                 <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', minHeight: '80px', resize: 'vertical' }} rows="3" />
