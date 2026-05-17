@@ -7,19 +7,20 @@ import {
   ShoppingCart, LogOut, Menu, ChevronRight, Settings as SettingsIcon
 } from 'lucide-react';
 
-const menuItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/agendamento', label: 'Agendamento Online', icon: Calendar },
-  { path: '/agenda', label: 'Agenda', icon: Calendar },
-  { path: '/clients', label: 'Clientes', icon: Users },
-  { path: '/employees', label: 'Profissionais', icon: UserCircle2 },
-  { path: '/services', label: 'Serviços', icon: Scissors },
-  { path: '/products', label: 'Produtos', icon: Package },
+const ROLE_LEVELS = { admin: 4, manager: 3, operator: 2, viewer: 1 };
 
-  { path: '/financeiro', label: 'Financeiro', icon: DollarSign },
-  { path: '/comissoes', label: 'Comissões', icon: Percent },
-  { path: '/caixa', label: 'PDV / Caixa', icon: ShoppingCart },
-  { path: '/ajustes', label: 'Ajustes', icon: SettingsIcon },
+const menuItems = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, minLevel: 1 },
+  { path: '/agendamento', label: 'Agendamento Online', icon: Calendar, minLevel: 1 },
+  { path: '/agenda', label: 'Agenda', icon: Calendar, minLevel: 1 },
+  { path: '/clients', label: 'Clientes', icon: Users, minLevel: 2 },
+  { path: '/employees', label: 'Profissionais', icon: UserCircle2, minLevel: 3 },
+  { path: '/services', label: 'Serviços', icon: Scissors, minLevel: 3 },
+  { path: '/products', label: 'Produtos', icon: Package, minLevel: 3 },
+  { path: '/financeiro', label: 'Financeiro', icon: DollarSign, minLevel: 3 },
+  { path: '/comissoes', label: 'Comissões', icon: Percent, minLevel: 3 },
+  { path: '/caixa', label: 'PDV / Caixa', icon: ShoppingCart, minLevel: 2 },
+  { path: '/ajustes', label: 'Ajustes', icon: SettingsIcon, minLevel: 4 },
 ];
 
 export default function Layout({ children }) {
@@ -36,8 +37,8 @@ export default function Layout({ children }) {
   const isActive = (path) => location.pathname === path;
 
   const canSee = (item) => {
-    if (item.path === '/ajustes') return user?.role === 'admin';
-    return true;
+    const userLevel = ROLE_LEVELS[user?.role] || 0;
+    return userLevel >= item.minLevel;
   };
 
   return (

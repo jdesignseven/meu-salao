@@ -23,10 +23,15 @@ import CashManagement from './pages/CashManagement'
 import Settings from './pages/Settings'
 import Permissions from './pages/Permissions'
 
-function PrivateRoute({ children }) {
+const ROLE_LEVELS = { admin: 4, manager: 3, operator: 2, viewer: 1 }
+
+function PrivateRoute({ children, minLevel = 1 }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading">Carregando...</div>
-  return user ? children : <Navigate to="/login" />
+  if (!user) return <Navigate to="/login" />
+  const userLevel = ROLE_LEVELS[user.role] || 0
+  if (userLevel < minLevel) return <Navigate to="/dashboard" />
+  return children
 }
 
 function App() {
@@ -47,49 +52,49 @@ function App() {
         </PrivateRoute>
       } />
       <Route path="/dashboard/financeiro" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <FinancialDashboard />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/financeiro" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <FinancialDashboard />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/financeiro/lancamentos" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <FinancialTransactions />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/financeiro/categoria" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <FinancialConfig />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/financeiro/conta" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <FinancialConfig />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/financeiro/formas-pagamento" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <FinancialConfig />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/comissoes" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <Commissions />
           </Layout>
@@ -124,35 +129,35 @@ function App() {
         </PrivateRoute>
       } />
       <Route path="/employees" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <Employees />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/services" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <Services />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/products" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={3}>
           <Layout>
             <Products />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/planos" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={4}>
           <Layout>
             <Plans />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/appointments" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={2}>
           <Layout>
             <Appointments />
           </Layout>
@@ -166,28 +171,28 @@ function App() {
         </PrivateRoute>
       } />
       <Route path="/caixa" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={2}>
           <Layout>
             <POS />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/caixa/gestao" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={2}>
           <Layout>
             <CashManagement />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/ajustes" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={4}>
           <Layout>
             <Settings />
           </Layout>
         </PrivateRoute>
       } />
       <Route path="/permissoes" element={
-        <PrivateRoute>
+        <PrivateRoute minLevel={4}>
           <Layout>
             <Permissions />
           </Layout>

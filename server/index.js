@@ -378,7 +378,7 @@ app.get('/api/products/:id/stock-movements', authMiddleware, requireLevel(1), (r
 });
 
 // ==================== APPOINTMENTS ====================
-app.get('/api/appointments', authMiddleware, (req, res) => {
+app.get('/api/appointments', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const { date, status } = req.query;
 
