@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Users, CreditCard, ClipboardList, FileText, MessageSquare, Save, ArrowLeft } from 'lucide-react';
+import { Store, Users, CreditCard, ClipboardList, FileText, MessageSquare, Shield, Save, ArrowLeft } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -16,6 +16,7 @@ const sections = [
   { key: 'anamnese', label: 'Anamnese', icon: ClipboardList, desc: 'Configurar perguntas da anamnese capilar' },
   { key: 'contrato', label: 'Contrato', icon: FileText, desc: 'Termo de consentimento e contratos' },
   { key: 'comunicacao', label: 'Comunicação', icon: MessageSquare, desc: 'WhatsApp, SMS, e-mail' },
+  { key: 'permissoes', label: 'Permissões', icon: Shield, desc: 'Gerenciar usuários e funções', link: '/permissoes' },
 ];
 
 export default function Settings() {

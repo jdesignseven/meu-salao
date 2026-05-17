@@ -954,6 +954,56 @@ app.delete('/api/salon/bookings/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
+// ==================== USERS / PERMISSIONS ====================
+function adminMiddleware(req, res, next) {
+  const db = getDB();
+  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId);
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores' });
+  }
+  next();
+}
+
+app.get('/api/users', authMiddleware, adminMiddleware, (req, res) => {
+  const db = getDB();
+  const users = db.prepare('SELECT id, name, email, role, created_at FROM users ORDER BY name').all();
+  res.json(users);
+});
+
+app.post('/api/users', authMiddleware, adminMiddleware, (req, res) => {
+  const db = getDB();
+  const { name, email, password, role } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existing) return res.status(400).json({ error: 'Email já cadastrado' });
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  const result = db.prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)').run(name, email, hashedPassword, role || 'operator');
+  res.json({ id: result.lastInsertRowid, name, email, role: role || 'operator' });
+});
+
+app.put('/api/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const db = getDB();
+  const { name, email, password, role } = req.body;
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (password) {
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ? WHERE id = ?').run(name || user.name, email || user.email, hashedPassword, role || 'operator', req.params.id);
+  } else {
+    db.prepare('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?').run(name, email, role, req.params.id);
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const db = getDB();
+  if (parseInt(req.params.id) === req.user.userId) return res.status(400).json({ error: 'Não é possível excluir o próprio usuário' });
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 // ==================== SETTINGS ====================
 app.get('/api/settings', authMiddleware, (req, res) => {
   const db = getDB();

@@ -21,6 +21,7 @@ import Commissions from './pages/Commissions'
 import POS from './pages/POS'
 import CashManagement from './pages/CashManagement'
 import Settings from './pages/Settings'
+import Permissions from './pages/Permissions'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -182,6 +183,13 @@ function App() {
         <PrivateRoute>
           <Layout>
             <Settings />
+          </Layout>
+        </PrivateRoute>
+      } />
+      <Route path="/permissoes" element={
+        <PrivateRoute>
+          <Layout>
+            <Permissions />
           </Layout>
         </PrivateRoute>
       } />
