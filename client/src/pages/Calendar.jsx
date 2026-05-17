@@ -850,7 +850,7 @@ function AnamneseSection({ client, onUpdate }) {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={labelStyle}>Observações</label>
-                  <textarea value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)} style={inputStyle} />
+                  <textarea value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)} style={{ ...inputStyle, resize: 'none' }} />
                 </div>
                 <div style={{ flex: 1 }} />
               </div>
