@@ -360,7 +360,7 @@ export default function Calendar() {
               </div>
             </div>
 
-            <AnamneseSection client={clients.find(c => c.id === selectedAppointment.client_id)} />
+          <AnamneseSection client={clients.find(c => c.id === selectedAppointment.client_id)} onUpdate={fetchData} />
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowDetails(false); openModal(selectedAppointment); }} style={{
@@ -504,57 +504,242 @@ const ANAMNESE_OPTIONS = {
   frequencia_lavagem: { diaria: 'Diária', dia_sim_nao: 'Dia sim, dia não', '2x_semana': '2x por semana', '1x_semana': '1x por semana' }
 };
 
-function AnamneseSection({ client }) {
+function AnamneseSection({ client, onUpdate }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
 
-  if (!client?.anamnese_capilar) return null;
-
-  let data;
-  try {
-    data = JSON.parse(client.anamnese_capilar || '{}');
-    if (!Object.keys(data).length) return null;
-  } catch {
-    return null;
-  }
-
-  const renderValue = (key, value) => {
-    if (value === null || value === undefined || value === '') return '-';
-    if (key === 'finalizadores' || key === 'transplante' || key === 'gestante') return value ? 'Sim' : 'Não';
-    if (key === 'problemas' && Array.isArray(value)) return value.length ? value.join(', ') : '-';
-    if (key === 'tipo_cabelo' || key === 'couro_cabeludo' || key === 'frequencia_lavagem') return ANAMNESE_OPTIONS[key]?.[value] || value;
-    return value;
+  const defaultAnamnese = {
+    tipo_cabelo: '', couro_cabeludo: '', problemas: [], frequencia_lavagem: '',
+    finalizadores: false, finalizadores_quais: '', produtos: '',
+    quimicos: '', alergias: '', transplante: false,
+    doencas: '', medicamentos: '', gestante: false,
+    objetivos: '', observacoes: ''
   };
+
+  const [form, setForm] = useState({ ...defaultAnamnese });
+
+  useEffect(() => {
+    if (client?.anamnese_capilar) {
+      try {
+        const parsed = JSON.parse(client.anamnese_capilar || '{}');
+        setForm(prev => ({ ...prev, ...parsed }));
+      } catch { /* ignore */ }
+    }
+  }, [client]);
+
+  if (!client) return null;
+
+  const hasData = Object.entries(form).some(([k, v]) =>
+    k !== 'finalizadores_quais' && v !== null && v !== undefined && v !== '' && (!Array.isArray(v) || v.length)
+  );
+
+  const handleField = (key, value) => setForm(f => ({ ...f, [key]: value }));
+
+  const handleCheckboxGroup = (key, val) => {
+    setForm(f => ({
+      ...f,
+      [key]: f[key].includes(val) ? f[key].filter(x => x !== val) : [...f[key], val]
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg('');
+    try {
+      const body = { ...client, anamnese_capilar: JSON.stringify(form) };
+      delete body.id;
+      delete body.services;
+      delete body.financial;
+      delete body.documents;
+
+      const res = await fetch(`${API_URL}/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        setMsg('Salvo com sucesso!');
+        setEditing(false);
+        onUpdate?.();
+      } else {
+        const err = await res.json();
+        setMsg(err.error || 'Erro ao salvar');
+      }
+    } catch {
+      setMsg('Erro ao conectar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = { width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit', boxSizing: 'border-box' };
+  const labelStyle = { display: 'block', fontSize: '12px', color: '#606060', marginBottom: '4px' };
+  const PROBLEMS = ['Queda', 'Quebra', 'Caspa', 'Oleosidade excessiva', 'Ressecamento', 'Coceira', 'Dermatite', 'Outro'];
 
   return (
     <div style={{ marginBottom: '24px', borderTop: '1px solid #e0e0e0', paddingTop: '16px' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: '15px', fontWeight: 500, color: '#2c3e50', padding: '4px 0'
-        }}
-      >
-        <span style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
-        Anamnese Capilar
-        <span style={{ fontSize: '12px', color: '#999', fontWeight: 400 }}>
-          ({Object.entries(data).filter(([, v]) => v !== null && v !== undefined && v !== '' && (!Array.isArray(v) || v.length)).length} preenchidos)
-        </span>
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <button
+          onClick={() => setOpen(!open)}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px', fontWeight: 500, color: '#2c3e50', padding: '4px 0' }}
+        >
+          <span style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+          Anamnese Capilar
+        </button>
+        {open && !editing && (
+          <button onClick={() => setEditing(true)} style={{ padding: '4px 10px', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>
+            {hasData ? 'Editar' : 'Preencher'}
+          </button>
+        )}
+      </div>
 
       {open && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-          {Object.entries(ANAMNESE_LABELS).map(([key, label]) => {
-            const value = data[key];
-            if (value === null || value === undefined || value === '' || (Array.isArray(value) && !value.length)) return null;
-            return (
-              <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
-                <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
-                <span style={{ color: '#333' }}>{renderValue(key, value)}</span>
+        <>
+          {msg && (
+            <div style={{ padding: '8px 12px', background: msg.includes('sucesso') ? '#d4edda' : '#ffebee', color: msg.includes('sucesso') ? '#155724' : '#c62828', borderRadius: '4px', fontSize: '13px', marginBottom: '12px' }}>
+              {msg}
+            </div>
+          )}
+
+          {!editing ? (
+            hasData ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {Object.entries(ANAMNESE_LABELS).map(([key, label]) => {
+                  const v = form[key];
+                  if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) return null;
+                  let display = v;
+                  if (key === 'finalizadores' || key === 'transplante' || key === 'gestante') display = v ? 'Sim' : 'Não';
+                  else if (key === 'problemas' && Array.isArray(v)) display = v.join(', ');
+                  else if (ANAMNESE_OPTIONS[key]?.[v]) display = ANAMNESE_OPTIONS[key][v];
+                  return (
+                    <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
+                      <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
+                      <span style={{ color: '#333' }}>{display}</span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>Nenhum dado de anamnese preenchido.</p>
+            )
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Tipo de Cabelo</label>
+                <select value={form.tipo_cabelo} onChange={e => handleField('tipo_cabelo', e.target.value)} style={inputStyle}>
+                  <option value="">Selecione</option>
+                  {Object.entries(ANAMNESE_OPTIONS.tipo_cabelo).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Couro Cabeludo</label>
+                <select value={form.couro_cabeludo} onChange={e => handleField('couro_cabeludo', e.target.value)} style={inputStyle}>
+                  <option value="">Selecione</option>
+                  {Object.entries(ANAMNESE_OPTIONS.couro_cabeludo).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Frequência de Lavagem</label>
+                <select value={form.frequencia_lavagem} onChange={e => handleField('frequencia_lavagem', e.target.value)} style={inputStyle}>
+                  <option value="">Selecione</option>
+                  {Object.entries(ANAMNESE_OPTIONS.frequencia_lavagem).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Problemas Capilares</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '13px' }}>
+                  {PROBLEMS.map(p => (
+                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={form.problemas.includes(p)} onChange={() => handleCheckboxGroup('problemas', p)} />
+                      {p}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                <label style={labelStyle}>Usa Finalizadores?</label>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input type="radio" checked={form.finalizadores === true} onChange={() => handleField('finalizadores', true)} /> Sim
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input type="radio" checked={form.finalizadores === false} onChange={() => handleField('finalizadores', false)} /> Não
+                  </label>
+                </div>
+              </div>
+              {form.finalizadores && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={labelStyle}>Quais Finalizadores?</label>
+                  <input type="text" value={form.finalizadores_quais} onChange={e => handleField('finalizadores_quais', e.target.value)} style={inputStyle} />
+                </div>
+              )}
+
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={labelStyle}>Produtos Utilizados</label>
+                <textarea rows={2} value={form.produtos} onChange={e => handleField('produtos', e.target.value)} style={inputStyle} />
+              </div>
+
+              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                <label style={labelStyle}>Químicos / Procedimentos</label>
+                <textarea rows={2} value={form.quimicos} onChange={e => handleField('quimicos', e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={labelStyle}>Alergias</label>
+                <textarea rows={2} value={form.alergias} onChange={e => handleField('alergias', e.target.value)} style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Já fez Transplante Capilar?</label>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input type="radio" checked={form.transplante === true} onChange={() => handleField('transplante', true)} /> Sim
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input type="radio" checked={form.transplante === false} onChange={() => handleField('transplante', false)} /> Não
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Gestante?</label>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input type="radio" checked={form.gestante === true} onChange={() => handleField('gestante', true)} /> Sim
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input type="radio" checked={form.gestante === false} onChange={() => handleField('gestante', false)} /> Não
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={labelStyle}>Doenças</label>
+                <textarea rows={2} value={form.doencas} onChange={e => handleField('doencas', e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={labelStyle}>Medicamentos</label>
+                <textarea rows={2} value={form.medicamentos} onChange={e => handleField('medicamentos', e.target.value)} style={inputStyle} />
+              </div>
+
+              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                <label style={labelStyle}>Objetivos</label>
+                <textarea rows={2} value={form.objetivos} onChange={e => handleField('objetivos', e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={labelStyle}>Observações</label>
+                <textarea rows={2} value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)} style={inputStyle} />
+              </div>
+
+              <div style={{ gridColumn: 'span 2', display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button onClick={() => { setEditing(false); setMsg(''); }} style={{ padding: '8px 16px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? 'Salvando...' : 'Salvar Anamnese'}</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
