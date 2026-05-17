@@ -360,6 +360,8 @@ export default function Calendar() {
               </div>
             </div>
 
+            <AnamneseSection client={clients.find(c => c.id === selectedAppointment.client_id)} />
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowDetails(false); openModal(selectedAppointment); }} style={{
                 padding: '10px 20px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
@@ -472,6 +474,86 @@ export default function Calendar() {
               <button onClick={closeCamera} style={{ padding: '12px 32px', background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ANAMNESE_LABELS = {
+  tipo_cabelo: 'Tipo de Cabelo',
+  couro_cabeludo: 'Couro Cabeludo',
+  problemas: 'Problemas Capilares',
+  frequencia_lavagem: 'Frequência de Lavagem',
+  finalizadores: 'Usa Finalizadores',
+  finalizadores_quais: 'Quais Finalizadores',
+  produtos: 'Produtos Utilizados',
+  quimicos: 'Químicos / Procedimentos',
+  alergias: 'Alergias',
+  transplante: 'Já fez Transplante',
+  doencas: 'Doenças',
+  medicamentos: 'Medicamentos',
+  gestante: 'Gestante',
+  objetivos: 'Objetivos',
+  observacoes: 'Observações'
+};
+
+const ANAMNESE_OPTIONS = {
+  tipo_cabelo: { liso: 'Liso', ondulado: 'Ondulado', cacheado: 'Cacheado', crespo: 'Crespo' },
+  couro_cabeludo: { oleoso: 'Oleoso', seco: 'Seco', normal: 'Normal', misto: 'Misto' },
+  frequencia_lavagem: { diaria: 'Diária', dia_sim_nao: 'Dia sim, dia não', '2x_semana': '2x por semana', '1x_semana': '1x por semana' }
+};
+
+function AnamneseSection({ client }) {
+  const [open, setOpen] = useState(false);
+
+  if (!client?.anamnese_capilar) return null;
+
+  let data;
+  try {
+    data = JSON.parse(client.anamnese_capilar || '{}');
+    if (!Object.keys(data).length) return null;
+  } catch {
+    return null;
+  }
+
+  const renderValue = (key, value) => {
+    if (value === null || value === undefined || value === '') return '-';
+    if (key === 'finalizadores' || key === 'transplante' || key === 'gestante') return value ? 'Sim' : 'Não';
+    if (key === 'problemas' && Array.isArray(value)) return value.length ? value.join(', ') : '-';
+    if (key === 'tipo_cabelo' || key === 'couro_cabeludo' || key === 'frequencia_lavagem') return ANAMNESE_OPTIONS[key]?.[value] || value;
+    return value;
+  };
+
+  return (
+    <div style={{ marginBottom: '24px', borderTop: '1px solid #e0e0e0', paddingTop: '16px' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: '15px', fontWeight: 500, color: '#2c3e50', padding: '4px 0'
+        }}
+      >
+        <span style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+        Anamnese Capilar
+        <span style={{ fontSize: '12px', color: '#999', fontWeight: 400 }}>
+          ({Object.entries(data).filter(([, v]) => v !== null && v !== undefined && v !== '' && (!Array.isArray(v) || v.length)).length} preenchidos)
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+          {Object.entries(ANAMNESE_LABELS).map(([key, label]) => {
+            const value = data[key];
+            if (value === null || value === undefined || value === '' || (Array.isArray(value) && !value.length)) return null;
+            return (
+              <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
+                <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
+                <span style={{ color: '#333' }}>{renderValue(key, value)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
