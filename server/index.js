@@ -396,6 +396,15 @@ app.post('/api/appointments', authMiddleware, (req, res) => {
   res.json(apt);
 });
 
+app.get('/api/public/settings', (req, res) => {
+  const db = getDB();
+  const keys = ['salon_name','salon_address','salon_phone','salon_whatsapp','salon_instagram','salon_email','salon_hours','salon_about'];
+  const settings = db.prepare(`SELECT * FROM settings WHERE key IN (${keys.map(k => '?').join(',')})`).all(...keys);
+  const settingsObj = {};
+  settings.forEach(s => { settingsObj[s.key] = s.value; });
+  res.json(settingsObj);
+});
+
 app.post('/api/public/appointments', (req, res) => {
   const db = getDB();
   const { name, phone, email, employee_id, service_id, date, time, notes } = req.body;
