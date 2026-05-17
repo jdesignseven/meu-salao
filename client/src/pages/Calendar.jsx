@@ -495,7 +495,10 @@ const ANAMNESE_LABELS = {
   medicamentos: 'Medicamentos',
   gestante: 'Gestante',
   objetivos: 'Objetivos',
-  observacoes: 'Observações'
+  observacoes: 'Observações',
+  teste_mecha_raiz: 'Raiz',
+  teste_mecha_meio: 'Meio',
+  teste_mecha_pontas: 'Pontas'
 };
 
 const ANAMNESE_OPTIONS = {
@@ -588,7 +591,10 @@ function AnamneseSection({ client, onUpdate }) {
     doencas: [], medicamentos: [], gestante: false,
     objetivos: [], observacoes: '',
     produtos_outro: '', quimicos_outro: '', alergias_outro: '',
-    doencas_outro: '', medicamentos_outro: '', objetivos_outro: ''
+    doencas_outro: '', medicamentos_outro: '', objetivos_outro: '',
+    teste_mecha_raiz: '', teste_mecha_raiz_tempo: '',
+    teste_mecha_meio: '', teste_mecha_meio_tempo: '',
+    teste_mecha_pontas: '', teste_mecha_pontas_tempo: ''
   };
 
   const [form, setForm] = useState({ ...defaultAnamnese });
@@ -707,7 +713,7 @@ function AnamneseSection({ client, onUpdate }) {
             hasData ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {Object.entries(ANAMNESE_LABELS).map(([key, label]) => {
-                  if (key === 'finalizadores_quais') return null;
+                  if (key === 'finalizadores_quais' || key.startsWith('teste_mecha')) return null;
                   const display = formatVal(key, form[key]);
                   if (display === null) return null;
                   return (
@@ -717,6 +723,25 @@ function AnamneseSection({ client, onUpdate }) {
                     </div>
                   );
                 })}
+                {(form.teste_mecha_raiz || form.teste_mecha_meio || form.teste_mecha_pontas) && (
+                  <>
+                    <div style={{ gridColumn: 'span 2', fontSize: '14px', fontWeight: 500, color: '#2c3e50', marginTop: '4px' }}>Teste de Mechas</div>
+                    {[
+                      { key: 'teste_mecha_raiz', label: 'Raiz', tempo: form.teste_mecha_raiz_tempo },
+                      { key: 'teste_mecha_meio', label: 'Meio', tempo: form.teste_mecha_meio_tempo },
+                      { key: 'teste_mecha_pontas', label: 'Pontas', tempo: form.teste_mecha_pontas_tempo }
+                    ].map(({ key, label, tempo }) => {
+                      const v = form[key];
+                      if (!v) return null;
+                      return (
+                        <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
+                          <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
+                          <span style={{ color: '#333' }}>{v}{tempo ? ` (${tempo} min)` : ''}</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             ) : (
               <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>Nenhum dado de anamnese preenchido.</p>
@@ -825,6 +850,19 @@ function AnamneseSection({ client, onUpdate }) {
                   <textarea rows={2} value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)} style={inputStyle} />
                 </div>
                 <div style={{ flex: 1 }} />
+              </div>
+
+              <div style={{ borderTop: '1px solid #eee', paddingTop: '6px', marginTop: '4px' }}>
+                <label style={{ ...labelStyle, fontSize: '14px', fontWeight: 500, color: '#2c3e50', marginBottom: '8px' }}>Teste de Mechas</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {['raiz', 'meio', 'pontas'].map(part => (
+                    <div key={part} style={{ flex: 1 }}>
+                      <label style={labelStyle}>{part === 'raiz' ? 'Raiz' : part === 'meio' ? 'Meio' : 'Pontas'}</label>
+                      <textarea rows={2} value={form['teste_mecha_' + part]} onChange={e => handleField('teste_mecha_' + part, e.target.value)} placeholder="Observação..." style={inputStyle} />
+                      <input type="number" value={form['teste_mecha_' + part + '_tempo']} onChange={e => handleField('teste_mecha_' + part + '_tempo', e.target.value)} placeholder="Tempo (min)" style={{ ...inputStyle, marginTop: '4px' }} min="0" />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
