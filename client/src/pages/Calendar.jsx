@@ -723,19 +723,19 @@ function AnamneseSection({ client, onUpdate }) {
             )
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Tipo de Cabelo</label>
                 <CheckboxGroup field="tipo_cabelo" form={form} onChange={setFormField} />
               </div>
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Couro Cabeludo</label>
                 <CheckboxGroup field="couro_cabeludo" form={form} onChange={setFormField} />
               </div>
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Frequência de Lavagem</label>
                 <CheckboxGroup field="frequencia_lavagem" form={form} onChange={setFormField} />
               </div>
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Problemas Capilares</label>
                 <CheckboxGroup field="problemas" form={form} onChange={setFormField} />
               </div>
