@@ -1,8 +1,4 @@
-.agendamento-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40px 20px;
-}
+/* Agendamento styles - simplified */
 
 .agendamento-page .container {
   max-width: 1000px;
@@ -229,7 +225,7 @@
 
 .calendar-day.today {
   background: #e3f2fd;
-  color: #2196f3;
+  color: #002cd6;
 }
 
 .calendar-day.selected {

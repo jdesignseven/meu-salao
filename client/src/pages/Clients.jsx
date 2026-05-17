@@ -1,16 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import ReactCrop from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
-import { Camera, Plus } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Camera, MessageCircle } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 function getAuthHeader() {
   const token = localStorage.getItem('token');
   return { Authorization: `Bearer ${token}` };
 }
-
-const ufOptions = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
@@ -19,88 +15,77 @@ export default function Clients() {
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', gender: '', birth_date: '', cpf: '', rg: '',
-    phone: '', landline: '', email: '', how_found: '', holder_type: 'Titular',
-    plan: '', cep: '', street: '', number: '', complement: '',
-    neighborhood: '', city: '', state: '', notes: '',
-    responsible_name: '', responsible_birth_date: '', responsible_cpf: '',
-    responsible_phone: '', profession: '', foreigner: false,
-    app_access_code: '', anamnese_capilar: ''
+    name: '', gender: '', birth_date: '', phone: '', email: '', cpf: ''
   });
-  const [activeTab, setActiveTab] = useState('info');
-  const [photoPreview, setPhotoPreview] = useState('');
-  const [showCamera, setShowCamera] = useState(false);
-  const [cameraStream, setCameraStream] = useState(null);
-  const videoRef = useRef(null);
-  const [showCropper, setShowCropper] = useState(false);
-  const [cropImage, setCropImage] = useState(null);
-  const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10, aspect: 1 });
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
   const [services, setServices] = useState([]);
   const [financial, setFinancial] = useState([]);
   const [documents, setDocuments] = useState([]);
-  const [showNewService, setShowNewService] = useState(false);
-  const [showNewFinancial, setShowNewFinancial] = useState(false);
-  const [showNewDocument, setShowNewDocument] = useState(false);
   const [newService, setNewService] = useState({ date: '', service: '', value: '', status: 'Concluído' });
   const [newFinancial, setNewFinancial] = useState({ date: '', description: '', type: 'Débito', value: '', status: 'Pendente' });
-  const [newDocument, setNewDocument] = useState({ name: '', type: 'Termo', date: '' });
+  const [showNewService, setShowNewService] = useState(false);
+  const [showNewFinancial, setShowNewFinancial] = useState(false);
+  const [editingService, setEditingService] = useState(null);
   const [editingFinancial, setEditingFinancial] = useState(null);
+  const [activeTab, setActiveTab] = useState('info');
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [plans, setPlans] = useState([]);
+  const [cameraStream, setCameraStream] = useState(null);
+  const defaultAnamnese = {
+    tipo_cabelo: '', couro_cabeludo: '', problemas: [], frequencia_lavagem: '',
+    finalizadores: false, finalizadores_quais: '', produtos: '',
+    quimicos: '', alergias: '', transplante: false,
+    doencas: '', medicamentos: '', gestante: false,
+    objetivos: '', observacoes: ''
+  };
+  const [anamneseData, setAnamneseData] = useState({ ...defaultAnamnese });
+  const [showNewDocument, setShowNewDocument] = useState(false);
+  const [newDocument, setNewDocument] = useState({ name: '', type: 'Termo', date: '' });
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef(null);
+  const ufOptions = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
+  const getWhatsAppLink = (phone) => {
+    if (!phone) return null;
+    const cleaned = phone.replace(/\D/g, '').replace(/^0+/, '');
+    return `https://wa.me/${cleaned.startsWith('55') ? cleaned : `55${cleaned}`}`;
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { setPhotoPreview(reader.result); };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const openCamera = async () => {
     try {
+      setShowCamera(true);
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       setCameraStream(stream);
-      setShowCamera(true);
-      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 100);
-    } catch (error) {
-      console.error('Erro ao acessar câmera:', error);
-      alert('Não foi possível acessar a câmera. Verifique as permissões.');
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (err) {
+      console.error('Camera error:', err);
+      setShowCamera(false);
     }
   };
 
   const closeCamera = () => {
-    if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); setCameraStream(null); }
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    setCameraStream(null);
     setShowCamera(false);
   };
 
   const capturePhoto = () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-      setCropImage(canvas.toDataURL('image/jpeg'));
-      setShowCropper(true);
-      closeCamera();
-    }
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => { setCropImage(reader.result); setShowCropper(true); };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const getCroppedImg = () => {
-    if (!imgRef.current || !completedCrop) return;
-    const image = imgRef.current;
+    const video = videoRef.current;
+    if (!video) return;
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    canvas.width = completedCrop.width * scaleX;
-    canvas.height = completedCrop.height * scaleY;
-    ctx.drawImage(image, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, canvas.width, canvas.height);
-    const croppedDataUrl = canvas.toDataURL('image/jpeg');
-    setFormData({...formData, photo: croppedDataUrl});
-    setPhotoPreview(croppedDataUrl);
-    setShowCropper(false);
-    setCropImage(null);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    setPhotoPreview(canvas.toDataURL('image/jpeg', 0.8));
+    closeCamera();
   };
 
   const fetchCEP = async (cep) => {
@@ -118,6 +103,7 @@ export default function Clients() {
   useEffect(() => { return () => { if (cameraStream) cameraStream.getTracks().forEach(track => track.stop()); }; }, []);
 
   useEffect(() => { fetchClients(); }, [search]);
+  useEffect(() => { (async () => { try { const res = await fetch(`${API_URL}/plans?active=1`, { headers: getAuthHeader() }); if (res.ok) setPlans(await res.json()); } catch(e) {} })(); }, []);
 
   const fetchClients = async () => {
     try {
@@ -142,12 +128,15 @@ export default function Clients() {
         responsible_birth_date: client.responsible_birth_date || '', responsible_cpf: client.responsible_cpf || '',
         responsible_phone: client.responsible_phone || '', profession: client.profession || '',
         foreigner: client.foreigner || false, app_access_code: client.app_access_code || '',
-        anamnese_capilar: client.anamnese_capilar || ''
+        anamnese_capilar: ''
       });
       setPhotoPreview(client.photo || '');
       setServices(client.services || []);
       setFinancial(client.financial || []);
       setDocuments(client.documents || []);
+      let parsed = { ...defaultAnamnese };
+      try { const p = JSON.parse(client.anamnese_capilar || '{}'); parsed = { ...parsed, ...p }; } catch(e) {}
+      setAnamneseData(parsed);
     } else {
       setEditingClient(null);
       setFormData({
@@ -163,6 +152,7 @@ export default function Clients() {
       setServices([]);
       setFinancial([]);
       setDocuments([]);
+      setAnamneseData({ ...defaultAnamnese });
     }
     setShowModal(true);
   };
@@ -174,13 +164,17 @@ export default function Clients() {
     try {
       const url = editingClient ? `${API_URL}/clients/${editingClient.id}` : `${API_URL}/clients`;
       const method = editingClient ? 'PUT' : 'POST';
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
+      formData.anamnese_capilar = JSON.stringify(anamneseData);
+      formData.photo = photoPreview;
       const res = await fetch(url, {
         method,
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ ...formData, services, financial, documents })
       });
-      if (res.ok) { fetchClients(); closeModal(); }
-    } catch (error) { console.error('Error saving client:', error); }
+      if (res.ok) { fetchClients(); closeModal(); } else { const err = await res.text(); alert('Erro ao salvar: ' + err); }
+    } catch (error) { console.error('Error saving client:', error); alert('Erro ao salvar: ' + error.message); }
   };
 
   const handleDelete = async (id) => {
@@ -267,6 +261,7 @@ export default function Clients() {
                   <td>{client.plan || '-'}</td>
                   <td>{client.city || '-'}</td>
                   <td className="actions">
+                    {client.phone && <a href={getWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" className="btn-whatsapp" title="Enviar WhatsApp"><MessageCircle size={16} /></a>}
                     <button onClick={() => openModal(client)} className="btn-edit">Editar</button>
                     <button onClick={() => handleDelete(client.id)} className="btn-delete">Excluir</button>
                   </td>
@@ -315,21 +310,7 @@ export default function Clients() {
                 </div>
               )}
 
-              {/* Cropper */}
-              {showCropper && (
-                <div className="modal-overlay" onClick={() => setShowCropper(false)}>
-                  <div className="modal" onClick={(e) => e.stopPropagation()} style={{textAlign: 'center', maxWidth: '500px'}}>
-                    <h3>Arraste ou redimensione a caixa para escolher a área da imagem</h3>
-                    <div style={{margin: '20px 0'}}>
-                      {cropImage && (<ReactCrop crop={crop} onChange={(c) => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} aspect={1} circularCrop><img ref={imgRef} src={cropImage} style={{maxWidth: '100%', maxHeight: '400px'}} /></ReactCrop>)}
-                    </div>
-                    <div style={{marginTop: '15px', display: 'flex', gap: '10px', justifyContent: 'center'}}>
-                      <button type="button" onClick={getCroppedImg} className="btn-primary">Alterar foto</button>
-                      <button type="button" onClick={() => { setShowCropper(false); setCropImage(null); }} className="btn-secondary">Cancelar</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               {/* Right Column */}
               <div style={{flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0}}>
@@ -415,7 +396,7 @@ export default function Clients() {
 
                     {activeTab === 'plano' && (
                       <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px'}}>
-                        <div className="form-group"><label>Plano</label><select value={formData.plan} onChange={(e) => setFormData({ ...formData, plan: e.target.value })} style={{fontSize: '13px', padding: '6px 10px'}}><option value="">Selecione</option><option value="Básico">Básico</option><option value="Premium">Premium</option><option value="VIP">VIP</option></select></div>
+                        <div className="form-group"><label>Plano</label><select value={formData.plan} onChange={(e) => setFormData({ ...formData, plan: e.target.value })} style={{fontSize: '13px', padding: '6px 10px'}}><option value="">Selecione</option>{plans.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
                       </div>
                     )}
 
@@ -438,10 +419,123 @@ export default function Clients() {
                     )}
 
                     {activeTab === 'anamnese' && (
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                        <h3 style={{fontSize: '15px', margin: 0, color: '#2c3e50'}}>I. Dados Capilares</h3>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px'}}>
+                          <div className="form-group">
+                            <label>Tipo de Cabelo</label>
+                            <select value={anamneseData.tipo_cabelo} onChange={(e) => setAnamneseData({...anamneseData, tipo_cabelo: e.target.value})} style={{fontSize: '13px', padding: '6px 10px'}}>
+                              <option value="">Selecione</option>
+                              <option value="liso">Liso</option>
+                              <option value="ondulado">Ondulado</option>
+                              <option value="cacheado">Cacheado</option>
+                              <option value="crespo">Crespo</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Couro Cabeludo</label>
+                            <select value={anamneseData.couro_cabeludo} onChange={(e) => setAnamneseData({...anamneseData, couro_cabeludo: e.target.value})} style={{fontSize: '13px', padding: '6px 10px'}}>
+                              <option value="">Selecione</option>
+                              <option value="oleoso">Oleoso</option>
+                              <option value="seco">Seco</option>
+                              <option value="normal">Normal</option>
+                              <option value="misto">Misto</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Frequência de Lavagem</label>
+                            <select value={anamneseData.frequencia_lavagem} onChange={(e) => setAnamneseData({...anamneseData, frequencia_lavagem: e.target.value})} style={{fontSize: '13px', padding: '6px 10px'}}>
+                              <option value="">Selecione</option>
+                              <option value="diaria">Diária</option>
+                              <option value="dia_sim_nao">Dia sim, dia não</option>
+                              <option value="2x_semana">2x por semana</option>
+                              <option value="1x_semana">1x por semana</option>
+                            </select>
+                          </div>
+                        </div>
                         <div className="form-group">
-                          <label>Anamnese Capilar</label>
-                          <textarea value={formData.anamnese_capilar} onChange={(e) => setFormData({ ...formData, anamnese_capilar: e.target.value })} rows="8" placeholder={`1. Histórico de tratamentos químicos recentes\n2. Alergias conhecidas\n3. Tipo de cabelo (liso, ondulado, cacheado, crespo)\n4. Couro cabeludo (oleoso, seco, normal)\n5. Problemas capilares (queda, quebra, caspa)\n6. Produtos que costuma usar\n7. Objetivos com o tratamento`} style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                          <label>Problemas Capilares</label>
+                          <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px'}}>
+                            {['Queda', 'Quebra', 'Caspa', 'Oleosidade excessiva', 'Ressecamento', 'Coceira', 'Dermatite', 'Outro'].map(p => (
+                              <label key={p} style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                                <input type="checkbox" checked={anamneseData.problemas.includes(p)} onChange={(e) => {
+                                  const probs = e.target.checked ? [...anamneseData.problemas, p] : anamneseData.problemas.filter(x => x !== p);
+                                  setAnamneseData({...anamneseData, problemas: probs});
+                                }} />
+                                {p}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label>Usa Finalizadores?</label>
+                          <div style={{display: 'flex', gap: '16px', marginTop: '4px'}}>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                              <input type="radio" name="finalizadores" checked={anamneseData.finalizadores === true} onChange={() => setAnamneseData({...anamneseData, finalizadores: true})} /> Sim
+                            </label>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                              <input type="radio" name="finalizadores" checked={anamneseData.finalizadores === false} onChange={() => setAnamneseData({...anamneseData, finalizadores: false, finalizadores_quais: ''})} /> Não
+                            </label>
+                          </div>
+                          {anamneseData.finalizadores && (
+                            <input type="text" value={anamneseData.finalizadores_quais} onChange={(e) => setAnamneseData({...anamneseData, finalizadores_quais: e.target.value})} placeholder="Quais?" style={{fontSize: '13px', padding: '6px 10px', marginTop: '4px', width: '100%'}} />
+                          )}
+                        </div>
+                        <div className="form-group">
+                          <label>Produtos que Costuma Usar</label>
+                          <textarea value={anamneseData.produtos} onChange={(e) => setAnamneseData({...anamneseData, produtos: e.target.value})} rows="2" placeholder="Shampoo, condicionador, máscara, etc." style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                        </div>
+
+                        <h3 style={{fontSize: '15px', margin: '8px 0 0', color: '#2c3e50'}}>II. Histórico e Saúde</h3>
+                        <div className="form-group">
+                          <label>Histórico de Tratamentos Químicos</label>
+                          <textarea value={anamneseData.quimicos} onChange={(e) => setAnamneseData({...anamneseData, quimicos: e.target.value})} rows="2" placeholder="Progressiva, coloração, alisamento, etc." style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                        </div>
+                        <div className="form-group">
+                          <label>Alergias Conhecidas</label>
+                          <textarea value={anamneseData.alergias} onChange={(e) => setAnamneseData({...anamneseData, alergias: e.target.value})} rows="2" placeholder="Alergias a produtos, químicos, etc." style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                        </div>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px'}}>
+                          <div className="form-group">
+                            <label>Já Realizou Transplante Capilar?</label>
+                            <div style={{display: 'flex', gap: '16px', marginTop: '4px'}}>
+                              <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                                <input type="radio" name="transplante" checked={anamneseData.transplante === true} onChange={() => setAnamneseData({...anamneseData, transplante: true})} /> Sim
+                              </label>
+                              <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                                <input type="radio" name="transplante" checked={anamneseData.transplante === false} onChange={() => setAnamneseData({...anamneseData, transplante: false})} /> Não
+                              </label>
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Gestante / Lactante?</label>
+                            <div style={{display: 'flex', gap: '16px', marginTop: '4px'}}>
+                              <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                                <input type="radio" name="gestante" checked={anamneseData.gestante === true} onChange={() => setAnamneseData({...anamneseData, gestante: true})} /> Sim
+                              </label>
+                              <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer'}}>
+                                <input type="radio" name="gestante" checked={anamneseData.gestante === false} onChange={() => setAnamneseData({...anamneseData, gestante: false})} /> Não
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label>Histórico de Doenças</label>
+                          <textarea value={anamneseData.doencas} onChange={(e) => setAnamneseData({...anamneseData, doencas: e.target.value})} rows="2" placeholder="Doenças relevantes para o tratamento capilar" style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                        </div>
+                        <div className="form-group">
+                          <label>Uso de Medicamentos</label>
+                          <textarea value={anamneseData.medicamentos} onChange={(e) => setAnamneseData({...anamneseData, medicamentos: e.target.value})} rows="2" placeholder="Medicamentos em uso contínuo" style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                        </div>
+
+                        <h3 style={{fontSize: '15px', margin: '8px 0 0', color: '#2c3e50'}}>III. Objetivos</h3>
+                        <div className="form-group">
+                          <label>Objetivos com o Tratamento</label>
+                          <textarea value={anamneseData.objetivos} onChange={(e) => setAnamneseData({...anamneseData, objetivos: e.target.value})} rows="2" placeholder="O que espera alcançar com os tratamentos" style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
+                        </div>
+                        <div className="form-group">
+                          <label>Observações</label>
+                          <textarea value={anamneseData.observacoes} onChange={(e) => setAnamneseData({...anamneseData, observacoes: e.target.value})} rows="2" placeholder="Informações adicionais relevantes" style={{fontSize: '13px', padding: '6px 10px', fontFamily: 'inherit', resize: 'vertical'}} />
                         </div>
                       </div>
                     )}

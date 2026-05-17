@@ -1,167 +1,25 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, Calendar, ShoppingCart, Users, UserCircle2, 
-  Trophy, Package, DollarSign, BarChart3, ShoppingBag, FolderOpen, 
-  Search, Settings, Key, FileText, HelpCircle, ChevronRight, 
-  LogOut, Menu, CreditCard
+import {
+  LayoutDashboard, Calendar, Users, UserCircle2,
+  Scissors, Package, DollarSign, Percent,
+  ShoppingCart, LogOut, Menu, ChevronRight, Settings as SettingsIcon
 } from 'lucide-react';
 
-const iconMap = {
-  'Dashboard': LayoutDashboard,
-  'Agendamento': Calendar,
-  'Agenda': Calendar,
-  'Caixa': ShoppingCart,
-  'PDV / Caixa': ShoppingCart,
-  'Gestão de Caixa': DollarSign,
-  'Clientes': Users,
-  'Profissional': UserCircle2,
-  'Serviços': Trophy,
-  'Produtos e Estoque': Package,
-  'Financeiro': DollarSign,
-  'Lançamentos': FileText,
-  'Categorias': FolderOpen,
-  'Contas': FolderOpen,
-  'Formas de Pagamento': CreditCard,
-  'Análise': BarChart3,
-  'Compras': ShoppingBag,
-  'Compra': ShoppingBag,
-  'Fornecedor': FolderOpen,
-  'Cadastros Gerais': FolderOpen,
-  'Consulta': Search,
-  'Configurações': Settings,
-  'Permissões': Key,
-  'NFS-e': FileText,
-  'Ajuda': HelpCircle,
-  'Comissões': DollarSign
-};
-
 const menuItems = [
-  {
-    label: 'Dashboard',
-    icon: 'Dashboard',
-    submenu: [
-      { path: '/dashboard', label: 'Padrão' },
-      { path: '/financeiro', label: 'Financeiro' },
-      { path: '/dashboard/geral', label: 'Gráfico Geral' },
-      { path: '/dashboard/vendas', label: 'Gráfico Agenda e Vendas' },
-      { path: '/dashboard/financeiro-grafico', label: 'Gráfico do Financeiro' },
-    ]
-  },
-  { path: '/agendamento', label: 'Agendamento Online', icon: 'Agendamento' },
-  { path: '/agenda', label: 'Agenda', icon: 'Agenda' },
-  { path: '/caixa', label: 'PDV / Caixa', icon: 'PDV / Caixa' },
-  { path: '/caixa/gestao', label: 'Gestão de Caixa', icon: 'Gestão de Caixa' },
-  { path: '/clients', label: 'Clientes', icon: 'Clientes' },
-  { path: '/employees', label: 'Profissional', icon: 'Profissional' },
-  { path: '/comissoes', label: 'Comissões', icon: 'Comissões' },
-  { path: '/services', label: 'Serviços', icon: 'Serviços' },
-  { path: '/products', label: 'Produtos e Estoque', icon: 'Produtos e Estoque' },
-  {
-    label: 'Financeiro',
-    icon: 'Financeiro',
-    submenu: [
-      { path: '/financeiro', label: 'Dashboard' },
-      { path: '/financeiro/lancamentos', label: 'Lançamentos' },
-      { path: '/financeiro/categoria', label: 'Categorias' },
-      { path: '/financeiro/conta', label: 'Contas' },
-      { path: '/financeiro/formas-pagamento', label: 'Formas de Pagamento' },
-    ]
-  },
-  {
-    label: 'Análise',
-    icon: 'Análise',
-    submenu: [
-      { path: '/analise/fluxo-anual', label: 'Fluxo de Caixa Anual' },
-      { path: '/analise/fluxo-mensal', label: 'Fluxo de Caixa Mensal' },
-    ]
-  },
-  {
-    label: 'Compras',
-    icon: 'Compras',
-    submenu: [
-      { path: '/compras/compra', label: 'Compra' },
-      { path: '/compras/fornecedor', label: 'Fornecedor' },
-    ]
-  },
-  {
-    label: 'Cadastros Gerais',
-    icon: 'Cadastros Gerais',
-    submenu: [
-      { path: '/cadastros/fichas', label: 'Anamnese, Fichas e Contratos' },
-      { path: '/cadastros/campos-personalizados', label: 'Campo Personalizado' },
-      { path: '/cadastros/como-conheceu', label: 'Como nos Conheceu' },
-      { path: '/cadastros/equipamentos', label: 'Equipamentos' },
-      { path: '/cadastros/feriados', label: 'Feriado' },
-      { path: '/cadastros/grupo-servicos', label: 'Grupo de Serviços' },
-      { path: '/cadastros/marcas', label: 'Marcas' },
-      { path: '/cadastros/salas', label: 'Salas' },
-    ]
-  },
-  {
-    label: 'Consulta',
-    icon: 'Consulta',
-    submenu: [
-      { path: '/consulta/agendas', label: 'Agendas' },
-      { path: '/consulta/analise', label: 'Análise' },
-      { path: '/consulta/auditoria-agenda', label: 'Auditoria Agenda' },
-      { path: '/consulta/auditoria-fichas', label: 'Auditoria de Anamnese, Fichas e Contrato' },
-      { path: '/consulta/auditoria-vendas', label: 'Auditoria de Vendas' },
-      { path: '/consulta/comissao', label: 'Comissão Detalhada' },
-      { path: '/consulta/comparativo', label: 'Comparativo de Períodos' },
-      { path: '/consulta/demonstrativo', label: 'Demonstrativo' },
-      { path: '/consulta/estoque', label: 'Estoque' },
-      { path: '/consulta/pacotes', label: 'Pacote por Cliente' },
-      { path: '/consulta/previsao-retorno', label: 'Previsão de Retorno' },
-      { path: '/consulta/orcamentos', label: 'Orçamentos' },
-      { path: '/consulta/vendas', label: 'Vendas' },
-      { path: '/consulta/vendas-cliente', label: 'Vendas por Cliente' },
-    ]
-  },
-  {
-    label: 'Configurações',
-    icon: 'Configurações',
-    submenu: [
-      { path: '/configuracoes/empresa', label: 'Dados da Empresa' },
-      { path: '/configuracoes/configuracao', label: 'Configuração' },
-      { path: '/configuracoes/sms', label: 'SMS' },
-      { path: '/configuracoes/whatsapp', label: 'WhatsApp' },
-      { path: '/configuracoes/senha', label: 'Alterar Senha' },
-      { path: '/configuracoes/tutorial', label: 'Vídeos Tutoriais' },
-      { path: '/configuracoes/unifica', label: 'Unifica Cliente' },
-      { path: '/configuracoes/meios-pagamento', label: 'Meios de Pagamento' },
-    ]
-  },
-  {
-    label: 'Permissões',
-    icon: 'Permissões',
-    submenu: [
-      { path: '/permissoes/grupos', label: 'Grupos de Acessos' },
-    ]
-  },
-  {
-    label: 'NFS-e',
-    icon: 'NFS-e',
-    submenu: [
-      { path: '/nfse/configuracoes', label: 'Configurações' },
-      { path: '/nfse/painel', label: 'Caixa de Saída' },
-      { path: '/nfse/servico-municipal', label: 'Serviço Municipal' },
-      { path: '/nfse/lista-servico', label: 'Lista de Serviço LC116' },
-      { path: '/nfse/cnae', label: 'CNAE' },
-    ]
-  },
-  {
-    label: 'Ajuda',
-    icon: 'Ajuda',
-    submenu: [
-      { path: '/ajuda/agenda-online', label: 'Como Ativar a Agenda Online?' },
-      { path: '/ajuda/pacotes', label: 'Como Controlar Pacote ou Sessão?' },
-      { path: '/ajuda/anamnese', label: 'Como Preencher Ficha de Anamnese?' },
-      { path: '/ajuda/faq', label: 'Portal Dúvidas Frequentes' },
-      { path: '/ajuda/tutorial', label: 'Vídeos Tutoriais' },
-    ]
-  },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/agendamento', label: 'Agendamento Online', icon: Calendar },
+  { path: '/agenda', label: 'Agenda', icon: Calendar },
+  { path: '/clients', label: 'Clientes', icon: Users },
+  { path: '/employees', label: 'Profissionais', icon: UserCircle2 },
+  { path: '/services', label: 'Serviços', icon: Scissors },
+  { path: '/products', label: 'Produtos', icon: Package },
+
+  { path: '/financeiro', label: 'Financeiro', icon: DollarSign },
+  { path: '/comissoes', label: 'Comissões', icon: Percent },
+  { path: '/caixa', label: 'PDV / Caixa', icon: ShoppingCart },
+  { path: '/ajustes', label: 'Ajustes', icon: SettingsIcon },
 ];
 
 export default function Layout({ children }) {
@@ -169,99 +27,121 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [openSubmenus, setOpenSubmenus] = useState({ 'Dashboard': true });
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const toggleSubmenu = (label) => {
-    setOpenSubmenus(prev => ({ ...prev, [label]: !prev[label] }));
-  };
-
-  const isActive = (path) => {
-    if (!path) return false;
-    return location.pathname === path;
-  };
-
-  const isSubmenuActive = (submenu) => {
-    return submenu.some(item => location.pathname === item.path);
-  };
-
-  const renderIcon = (iconName, size = 20) => {
-    const Icon = iconMap[iconName];
-    return Icon ? <Icon size={size} /> : <FolderOpen size={size} />;
-  };
+  const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="app-container">
-      <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header">
-          <h2>beauty<span className="brand-suffix">sis</span></h2>
-        </div>
-        <nav className="sidebar-nav">
-          {menuItems.map((item) => (
-            <div key={item.path || item.label}>
-              {item.submenu ? (
-                <>
-                  <div
-                    onClick={() => toggleSubmenu(item.label)}
-                    className={`nav-item ${isSubmenuActive(item.submenu) ? 'active' : ''}`}
-                  >
-                    <span className="nav-icon">{renderIcon(item.icon)}</span>
-                    <span className="nav-label">{item.label}</span>
-                    <span className={`arrow ${openSubmenus[item.label] ? 'open' : ''}`}>
-                      <ChevronRight size={16} />
-                    </span>
-                  </div>
-                  {openSubmenus[item.label] && (
-                    <div className="sub-menu">
-                      {item.submenu.map((sub) => (
-                        <Link
-                          key={sub.path}
-                          to={sub.path}
-                          className={`nav-item sub-item ${isActive(sub.path) ? 'active' : ''}`}
-                        >
-                          <span className="nav-label">{sub.label}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <Link
-                  to={item.path}
-                  className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
-                >
-                  <span className="nav-icon">{renderIcon(item.icon)}</span>
-                  <span className="nav-label">{item.label}</span>
-                </Link>
-              )}
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <div className="user-info">
-            <span className="user-name">{user?.name}</span>
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
+      <aside style={{
+        width: sidebarOpen ? '240px' : '64px',
+        backgroundColor: '#fff',
+        borderRight: '1px solid #e0e0e0',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.3s ease',
+        overflow: 'hidden'
+      }}>
+        <div style={{ padding: '16px', borderBottom: '1px solid #e0e0e0', textAlign: sidebarOpen ? 'left' : 'center' }}>
+          <div style={{ fontSize: '20px', fontWeight: 700, color: '#2196f3', fontFamily: "'Coolvetica Book', sans-serif" }}>
+            {sidebarOpen ? 'beautysis' : 'b'}
           </div>
-          <button onClick={handleLogout} className="btn-logout" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-            <LogOut size={16} />
-            Sair
-          </button>
+        </div>
+
+        <nav style={{ flex: 1, padding: '8px 0', overflowY: 'auto' }}>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 16px',
+                  color: active ? '#2196f3' : '#404040',
+                  backgroundColor: active ? '#e3f2fd' : 'transparent',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: active ? 500 : 400,
+                  borderLeft: active ? '3px solid #2196f3' : '3px solid transparent',
+                  justifyContent: sidebarOpen ? 'flex-start' : 'center'
+                }}
+              >
+                <Icon size={20} />
+                {sidebarOpen && <span>{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div style={{ padding: '16px', borderTop: '1px solid #e0e0e0' }}>
+          {sidebarOpen ? (
+            <>
+              <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#404040' }}>{user?.name}</div>
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#606060',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: '4px 0'
+                }}
+              >
+                <LogOut size={16} />
+                Sair
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'none',
+                border: 'none',
+                color: '#606060',
+                cursor: 'pointer',
+                width: '100%'
+              }}
+            >
+              <LogOut size={20} />
+            </button>
+          )}
         </div>
       </aside>
 
-      <div className="main-content">
-        <header className="top-bar">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <header style={{
+          height: '56px',
+          borderBottom: '1px solid #e0e0e0',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+          backgroundColor: '#fff'
+        }}>
           <button
-            className="btn-toggle-sidebar"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
-            <Menu size={24} />
+            <Menu size={24} color="#404040" />
           </button>
         </header>
-        <main className="content">{children}</main>
+        <main style={{ flex: 1, padding: '24px', backgroundColor: '#fafafa', overflowY: 'auto' }}>
+          {children}
+        </main>
       </div>
     </div>
   );

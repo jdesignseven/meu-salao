@@ -82,17 +82,18 @@ function initDB() {
       FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS employees (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      phone TEXT DEFAULT '',
-      email TEXT DEFAULT '',
-      specialty TEXT DEFAULT '',
-      commission_rate REAL DEFAULT 0,
-      active INTEGER DEFAULT 1,
-      photo TEXT DEFAULT '',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+CREATE TABLE IF NOT EXISTS employees (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       name TEXT NOT NULL,
+       gender TEXT DEFAULT '',
+       phone TEXT DEFAULT '',
+       email TEXT DEFAULT '',
+       specialty TEXT DEFAULT '',
+       commission_rate REAL DEFAULT 0,
+       active INTEGER DEFAULT 1,
+       photo TEXT DEFAULT '',
+       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+     );
 
     CREATE TABLE IF NOT EXISTS services (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -278,7 +279,20 @@ function initDB() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      price REAL DEFAULT 0,
+      benefits TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  try { db.exec("ALTER TABLE appointments ADD COLUMN before_photo TEXT DEFAULT ''"); } catch (e) {}
+  try { db.exec("ALTER TABLE appointments ADD COLUMN after_photo TEXT DEFAULT ''"); } catch (e) {}
 
   seedData();
   console.log('Database initialized successfully');
@@ -298,22 +312,26 @@ function seedData() {
     insertClient.run('João Santos', 'M', '1990-12-25', '222.333.444-55', '2345678', '(71) 98888-2222', 'joao@email.com', 'Indicação', 'Titular', 'Básico', '40000-001', 'Av. Central', '456', 'Centro', 'Salvador', 'BA', '', '');
     insertClient.run('Ana Costa', 'F', '1995-05-04', '333.444.555-66', '3456789', '(71) 97777-3333', 'ana@email.com', 'Google', 'Dependente', 'Premium', '40000-002', 'Rua da Paz', '789', 'Centro', 'Salvador', 'BA', 'Prefere horários pela manhã', '');
 
-    const insertEmployee = db.prepare('INSERT INTO employees (name, phone, email, specialty, commission_rate, active) VALUES (?, ?, ?, ?, ?, ?)');
-    insertEmployee.run('Ana Paula', '(71) 96666-1111', 'ana.paula@salao.com', 'Cabelo,Coloração', 40, 1);
-    insertEmployee.run('Maria Clara', '(71) 95555-2222', 'maria.clara@salao.com', 'Unhas,Sobrancelhas', 35, 1);
-    insertEmployee.run('Juliana', '(71) 94444-3333', 'juliana@salao.com', 'Maquiagem,Cabelo', 45, 1);
-    insertEmployee.run('Carla', '(71) 93333-4444', 'carla@salao.com', 'Cabelo,Hidratação', 38, 1);
+    const insertEmployee = db.prepare('INSERT INTO employees (name, gender, phone, email, specialty, commission_rate, active) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    insertEmployee.run('Ana Paula', 'F', '(71) 96666-1111', 'ana.paula@salao.com', 'Escova,Hidratação + Nutrição,Escova + Hidratação', 40, 1);
+    insertEmployee.run('Maria Clara', 'F', '(71) 95555-2222', 'maria.clara@salao.com', 'Corte Pontas duplas,Botox,Progressiva', 35, 1);
+    insertEmployee.run('Juliana', 'F', '(71) 94444-3333', 'juliana@salao.com', 'Botox,Progressiva,Escova', 45, 1);
+    insertEmployee.run('Carla', 'F', '(71) 93333-4444', 'carla@salao.com', 'Hidratação + Nutrição,Escova + Hidratação,Corte Pontas duplas', 38, 1);
+    // Barber professionals
+    insertEmployee.run('Pedro Souza', 'M', '(71) 92222-5555', 'pedro.souza@salao.com', 'Corte,Corte e Barba,Botox', 40, 1);
+    insertEmployee.run('Marcos Silva', 'M', '(71) 91111-6666', 'marcos.silva@salao.com', 'Corte,Corte e Barba', 35, 1);
 
     const insertService = db.prepare('INSERT INTO services (name, description, price, duration_minutes, active) VALUES (?, ?, ?, ?, ?)');
-    insertService.run('Corte Feminino', 'Corte com finalização', 80, 60, 1);
-    insertService.run('Corte Masculino', 'Corte tradicional', 50, 30, 1);
-    insertService.run('Escova Progressiva', 'Tratamento progressivo', 150, 120, 1);
-    insertService.run('Coloração', 'Coloração completa', 120, 90, 1);
-    insertService.run('Hidratação Capilar', 'Tratamento hidratante', 70, 40, 1);
-    insertService.run('Manicure', 'Cuidado das unhas', 25, 30, 1);
-    insertService.run('Pedicure', 'Cuidado dos pés', 25, 30, 1);
-    insertService.run('Maquiagem', 'Maquiagem social', 100, 60, 1);
-    insertService.run('Design de Sobrancelhas', 'Modelagem de sobrancelhas', 35, 20, 1);
+    // Serviços Feminino
+    insertService.run('Escova', 'Escova tradicional', 50, 45, 1);
+    insertService.run('Hidratação + Nutrição', 'Tratamento completo de hidratação e nutrição capilar', 80, 60, 1);
+    insertService.run('Escova + Hidratação', 'Escova com tratamento hidratante', 100, 75, 1);
+    insertService.run('Corte Pontas duplas', 'Corte para eliminar pontas duplas', 60, 45, 1);
+    insertService.run('Botox', 'Aplicação de botox capilar', 120, 90, 1);
+    insertService.run('Progressiva', 'Tratamento progressivo completo', 180, 120, 1);
+    // Serviços Barbearia
+    insertService.run('Corte', 'Corte masculino tradicional', 40, 30, 1);
+    insertService.run('Corte e Barba', 'Corte masculino com acabamento de barba', 60, 45, 1);
 
     const insertProduct = db.prepare('INSERT INTO products (code, name, description, product_group, type, cost, sale_price, unit, stock, min_stock, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     insertProduct.run('PROD-001', 'Shampoo Hidratante 500ml', 'Shampoo profissional para cabelos secos e danificados', 'Shampoo', 'garrafa', 22.50, 45.00, 'ml', 15, 5, 1);

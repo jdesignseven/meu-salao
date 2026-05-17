@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import ReactCrop from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { Plus, Pencil, Trash2, Package, ArrowUpDown } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 function getAuthHeader() {
   const token = localStorage.getItem('token');
@@ -115,9 +114,10 @@ export default function Products() {
     try {
       const url = editingProduct ? `${API_URL}/products/${editingProduct.id}` : `${API_URL}/products`;
       const method = editingProduct ? 'PUT' : 'POST';
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
       const res = await fetch(url, {
-        method,
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        method, headers,
         body: JSON.stringify(formData)
       });
       if (res.ok) { fetchData(); setShowModal(false); }
@@ -139,14 +139,16 @@ export default function Products() {
   };
 
   const handleStockAdjust = async () => {
-    if (!stockForm.quantity || parseInt(stockForm.quantity) <= 0) {
+    if (!stockForm.quantity || parseInt(stockForm.quantity) <=0) {
       alert('Informe uma quantidade válida');
       return;
     }
     try {
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
       const res = await fetch(`${API_URL}/products/${selectedProduct.id}/stock`, {
         method: 'PATCH',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ ...stockForm, user: 'Admin' })
       });
       if (res.ok) { fetchData(); setShowStockModal(false); }

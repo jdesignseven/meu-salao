@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 function getAuthHeader() {
   const token = localStorage.getItem('token');
@@ -65,13 +66,15 @@ export default function FinancialConfig() {
     try {
       const url = editingItem ? `${API_URL}/financial/${endpoint}/${editingItem.id}` : `${API_URL}/financial/${endpoint}`;
       const method = editingItem ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { ...getAuthHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
+      const res = await fetch(url, { method, headers, body: JSON.stringify(formData) });
       if (res.ok) { setShowModal(false); fetchCategories(); fetchAccounts(); fetchPaymentMethods(); }
     } catch (error) { console.error(error); }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Excluir?')) return;
+    if (!confirm('Tem certeza que deseja excluir?')) return;
     let endpoint = '';
     if (activeTab === 'categorias') endpoint = 'categories';
     else if (activeTab === 'contas') endpoint = 'accounts';
@@ -85,31 +88,47 @@ export default function FinancialConfig() {
   const iconPicker = ['📝','💰','✂️','📦','🏠','🛒','💵','💡','💧','📱','🧹','📢','🎯','🔧','📄','🔵','🏦','💳'];
 
   return (
-    <div className="page">
-      <div className="page-header"><h1>Configurações Financeiras</h1></div>
-      <div style={{display: 'flex', gap: '5px', borderBottom: '2px solid #ddd', marginBottom: '20px'}}>
+    <div>
+      <h1 style={{ fontSize: '32px', fontWeight: 300, color: '#000', marginBottom: '24px' }}>Configurações Financeiras</h1>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #ddd', marginBottom: '24px' }}>
         {[{key:'categorias', label:'Categorias'},{key:'contas', label:'Contas'},{key:'pagamento', label:'Formas de Pagamento'}].map(t => (
-          <button key={t.key} type="button" onClick={() => setActiveTab(t.key)} style={{padding: '10px 20px', border: 'none', borderBottom: activeTab === t.key ? '3px solid #007bff' : '3px solid transparent', background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: activeTab === t.key ? 'bold' : 'normal'}}>{t.label}</button>
+          <button key={t.key} type="button" onClick={() => setActiveTab(t.key)} style={{
+            padding: '12px 24px', border: 'none', borderBottom: activeTab === t.key ? '2px solid #002cd6' : '2px solid transparent',
+            background: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: activeTab === t.key ? 500 : 400, color: activeTab === t.key ? '#002cd6' : '#606060'
+          }}>{t.label}</button>
         ))}
       </div>
 
+      {/* Categories Tab */}
       {activeTab === 'categorias' && (
         <>
-          <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-            <h2>Categorias</h2>
-            <button onClick={() => openModal(null, 'categorias')} className="btn-primary">+ Nova Categoria</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 500, color: '#000', margin: 0 }}>Categorias</h2>
+            <button onClick={() => openModal(null, 'categorias')} style={{
+              display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#002cd6', color: '#fff',
+              padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+            }}><Plus size={16} /> Nova Categoria</button>
           </div>
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             {['receita', 'despesa'].map(type => (
-              <div key={type} style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
-                <h3 style={{color: type === 'receita' ? '#27ae60' : '#e74c3c', marginBottom: '10px', textTransform: 'capitalize'}}>{type === 'receita' ? 'Receitas' : 'Despesas'}</h3>
+              <div key={type} style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 500, color: type === 'receita' ? '#4caf50' : '#f44336', margin: '0 0 16px', textTransform: 'capitalize' }}>{type === 'receita' ? 'Receitas' : 'Despesas'}</h3>
                 {categories.filter(c => c.type === type).map(c => (
-                  <div key={c.id} style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderBottom: '1px solid #eee', fontSize: '14px'}}>
-                    <span style={{fontSize: '20px'}}>{c.icon}</span>
-                    <div style={{flex: 1}}><strong>{c.name}</strong><br/><span style={{fontSize: '11px', color: '#999'}}>Ativo: {c.active ? 'Sim' : 'Não'}</span></div>
-                    <div style={{width: '20px', height: '20px', borderRadius: '4px', background: c.color}}></div>
-                    <button onClick={() => openModal(c, 'categorias')} className="btn-edit" style={{padding: '4px 8px', fontSize: '11px'}}>Editar</button>
-                    <button onClick={() => handleDelete(c.id)} className="btn-delete" style={{padding: '4px 8px', fontSize: '11px'}}>Excluir</button>
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderBottom: '1px solid #eee', fontSize: '14px' }}>
+                    <span style={{ fontSize: '24px' }}>{c.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, color: '#000' }}>{c.name}</div>
+                      <div style={{ fontSize: '12px', color: '#606060', marginTop: '4px' }}>Ativo: {c.active ? 'Sim' : 'Não'}</div>
+                    </div>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '4px', background: c.color }}></div>
+                    <button onClick={() => openModal(c, 'categorias')} style={{
+                      padding: '6px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                    }}><Edit2 size={14} /></button>
+                    <button onClick={() => handleDelete(c.id)} style={{
+                      padding: '6px', background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                    }}><Trash2 size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -118,46 +137,91 @@ export default function FinancialConfig() {
         </>
       )}
 
+      {/* Accounts Tab */}
       {activeTab === 'contas' && (
         <>
-          <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-            <h2>Contas</h2>
-            <button onClick={() => openModal(null, 'contas')} className="btn-primary">+ Nova Conta</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 500, color: '#000', margin: 0 }}>Contas</h2>
+            <button onClick={() => openModal(null, 'contas')} style={{
+              display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#002cd6', color: '#fff',
+              padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+            }}><Plus size={16} /> Nova Conta</button>
           </div>
-          <div className="table-container">
-            <table className="data-table">
-              <thead><tr><th>Nome</th><th>Tipo</th><th>Saldo</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>{accounts.map(a => (
-                <tr key={a.id}>
-                  <td><strong>{a.name}</strong></td>
-                  <td>{a.type === 'dinheiro' ? '💵 Dinheiro' : a.type === 'banco' ? '🏦 Banco' : a.type === 'digital' ? '📱 Digital' : '💳 Cartão'}</td>
-                  <td style={{fontWeight: 'bold', color: '#2c3e50', fontSize: '18px'}}>R$ {a.balance.toFixed(2)}</td>
-                  <td><span className={`status-badge ${a.active ? 'status-active' : 'status-inactive'}`}>{a.active ? 'Ativo' : 'Inativo'}</span></td>
-                  <td className="actions"><button onClick={() => openModal(a, 'contas')} className="btn-edit">Editar</button><button onClick={() => handleDelete(a.id)} className="btn-delete">Excluir</button></td>
+          <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#606060' }}>Nome</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#606060' }}>Tipo</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#606060' }}>Saldo</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#606060' }}>Status</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#606060' }}>Ações</th>
                 </tr>
-              ))}</tbody>
+              </thead>
+              <tbody>
+                {accounts.map(a => (
+                  <tr key={a.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#000' }}>{a.name}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '14px' }}>
+                      {a.type === 'dinheiro' ? '💵 Dinheiro' : a.type === 'banco' ? '🏦 Banco' : a.type === 'digital' ? '📱 Digital' : '💳 Cartão'}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontWeight: 500, fontSize: '16px', color: '#000' }}>R$ {a.balance.toFixed(2)}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 500,
+                        backgroundColor: a.active ? '#e8f5e9' : '#f5f5f5', color: a.active ? '#4caf50' : '#606060'
+                      }}>{a.active ? 'Ativo' : 'Inativo'}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => openModal(a, 'contas')} style={{
+                          padding: '6px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                        }}><Edit2 size={14} /></button>
+                        <button onClick={() => handleDelete(a.id)} style={{
+                          padding: '6px', background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                        }}><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </>
       )}
 
+      {/* Payment Methods Tab */}
       {activeTab === 'pagamento' && (
         <>
-          <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-            <h2>Formas de Pagamento</h2>
-            <button onClick={() => openModal(null, 'pagamento')} className="btn-primary">+ Nova Forma</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 500, color: '#000', margin: 0 }}>Formas de Pagamento</h2>
+            <button onClick={() => openModal(null, 'pagamento')} style={{
+              display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#002cd6', color: '#fff',
+              padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+            }}><Plus size={16} /> Nova Forma</button>
           </div>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {paymentMethods.map(p => (
-              <div key={p.id} style={{background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
-                  <span style={{fontSize: '28px'}}>{p.icon}</span>
-                  <div><strong style={{fontSize: '16px'}}>{p.name}</strong><br/><span style={{fontSize: '12px', color: '#777'}}>{p.type}</span></div>
+              <div key={p.id} style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '32px' }}>{p.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 500, color: '#000', fontSize: '16px' }}>{p.name}</div>
+                    <div style={{ fontSize: '13px', color: '#606060', marginTop: '4px' }}>{p.type}</div>
+                  </div>
                 </div>
-                {p.max_installments > 1 && <span style={{fontSize: '12px', background: '#ebf5fb', padding: '2px 8px', borderRadius: '4px', color: '#3498db'}}>Até {p.max_installments}x parcelas</span>}
-                <div style={{display: 'flex', gap: '8px', marginTop: '15px'}}>
-                  <button onClick={() => openModal(p, 'pagamento')} className="btn-edit" style={{flex: 1, padding: '6px', fontSize: '12px'}}>Editar</button>
-                  <button onClick={() => handleDelete(p.id)} className="btn-delete" style={{flex: 1, padding: '6px', fontSize: '12px'}}>Excluir</button>
+                {p.max_installments > 1 && (
+                  <span style={{ fontSize: '12px', background: '#e3f2fd', padding: '4px 8px', borderRadius: '4px', color: '#002cd6', display: 'inline-block', marginBottom: '12px' }}>
+                    Até {p.max_installments}x parcelas
+                  </span>
+                )}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => openModal(p, 'pagamento')} style={{
+                    flex: 1, padding: '8px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                  }}><Edit2 size={14} /> Editar</button>
+                  <button onClick={() => handleDelete(p.id)} style={{
+                    flex: 1, padding: '8px', background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                  }}><Trash2 size={14} /> Excluir</button>
                 </div>
               </div>
             ))}
@@ -165,34 +229,103 @@ export default function FinancialConfig() {
         </>
       )}
 
+      {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{marginBottom: '20px'}}>{editingItem ? 'Editar' : 'Novo'} {activeTab === 'categorias' ? 'Categoria' : activeTab === 'contas' ? 'Conta' : 'Forma de Pagamento'}</h2>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setShowModal(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '4px', padding: '24px', maxWidth: '500px', width: '90%' }}
+            onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: '20px', fontWeight: 500, color: '#000', margin: '0 0 24px' }}>
+              {editingItem ? 'Editar' : 'Novo'} {activeTab === 'categorias' ? 'Categoria' : activeTab === 'contas' ? 'Conta' : 'Forma de Pagamento'}
+            </h2>
             <form onSubmit={handleSubmit}>
-              <div className="form-group"><label>Nome *</label><input type="text" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} required /></div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Nome *</label>
+                <input type="text" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} required />
+              </div>
+
               {activeTab === 'categorias' && (
                 <>
-                  <div className="form-group"><label>Tipo</label><select value={formData.type || 'receita'} onChange={(e) => setFormData({...formData, type: e.target.value})}><option value="receita">Receita</option><option value="despesa">Despesa</option></select></div>
-                  <div className="form-group"><label>Ícone</label><div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>{iconPicker.map(icon => (<button key={icon} type="button" onClick={() => setFormData({...formData, icon})} style={{padding: '8px', border: formData.icon === icon ? '2px solid #3498db' : '1px solid #ddd', background: formData.icon === icon ? '#ebf5fb' : 'white', borderRadius: '6px', cursor: 'pointer', fontSize: '18px'}}>{icon}</button>))}</div></div>
-                  <div className="form-group"><label>Cor</label><input type="color" value={formData.color || '#999'} onChange={(e) => setFormData({...formData, color: e.target.value})} style={{width: '60px', height: '40px', padding: '2px', cursor: 'pointer'}} /></div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Tipo</label>
+                    <select value={formData.type || 'receita'} onChange={(e) => setFormData({...formData, type: e.target.value})}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}>
+                      <option value="receita">Receita</option><option value="despesa">Despesa</option>
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Ícone</label>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {iconPicker.map(icon => (
+                        <button key={icon} type="button" onClick={() => setFormData({...formData, icon})}
+                          style={{
+                            padding: '8px 12px', border: formData.icon === icon ? '2px solid #002cd6' : '1px solid #ddd',
+                            background: formData.icon === icon ? '#e3f2fd' : '#fff', borderRadius: '4px', cursor: 'pointer', fontSize: '18px'
+                          }}>{icon}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Cor</label>
+                    <input type="color" value={formData.color || '#999'} onChange={(e) => setFormData({...formData, color: e.target.value})}
+                      style={{ width: '60px', height: '40px', padding: '2px', cursor: 'pointer', border: '1px solid #ddd', borderRadius: '4px' }} />
+                  </div>
                 </>
               )}
+
               {activeTab === 'contas' && (
                 <>
-                  <div className="form-group"><label>Tipo</label><select value={formData.type || 'dinheiro'} onChange={(e) => setFormData({...formData, type: e.target.value})}><option value="dinheiro">💵 Dinheiro</option><option value="banco">🏦 Banco</option><option value="digital">📱 Digital</option><option value="cartao">💳 Cartão</option></select></div>
-                  <div className="form-group"><label>Saldo Inicial (R$)</label><input type="number" value={formData.balance || 0} onChange={(e) => setFormData({...formData, balance: e.target.value})} min="0" step="0.01" /></div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Tipo</label>
+                    <select value={formData.type || 'dinheiro'} onChange={(e) => setFormData({...formData, type: e.target.value})}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}>
+                      <option value="dinheiro">💵 Dinheiro</option><option value="banco">🏦 Banco</option><option value="digital">📱 Digital</option><option value="cartao">💳 Cartão</option>
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Saldo Inicial (R$)</label>
+                    <input type="number" value={formData.balance || 0} onChange={(e) => setFormData({...formData, balance: e.target.value})}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} min="0" step="0.01" />
+                  </div>
                 </>
               )}
+
               {activeTab === 'pagamento' && (
                 <>
-                  <div className="form-group"><label>Tipo</label><input type="text" value={formData.type || ''} onChange={(e) => setFormData({...formData, type: e.target.value})} /></div>
-                  <div className="form-group"><label>Ícone</label><input type="text" value={formData.icon || ''} onChange={(e) => setFormData({...formData, icon: e.target.value})} maxLength="2" /></div>
-                  <div className="form-group"><label>Max Parcelas</label><input type="number" value={formData.max_installments || 1} onChange={(e) => setFormData({...formData, max_installments: e.target.value})} min="1" max="24" /></div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Tipo</label>
+                    <input type="text" value={formData.type || ''} onChange={(e) => setFormData({...formData, type: e.target.value})}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Ícone</label>
+                    <input type="text" value={formData.icon || ''} onChange={(e) => setFormData({...formData, icon: e.target.value})}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} maxLength="2" />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Max Parcelas</label>
+                    <input type="number" value={formData.max_installments || 1} onChange={(e) => setFormData({...formData, max_installments: e.target.value})}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} min="1" max="24" />
+                  </div>
                 </>
               )}
-              <div className="form-group"><label><input type="checkbox" checked={formData.active === 1} onChange={(e) => setFormData({...formData, active: e.target.checked ? 1 : 0})} style={{marginRight: '8px'}} />Ativo</label></div>
-              <div className="modal-actions"><button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button><button type="submit" className="btn-primary">{editingItem ? 'Salvar' : 'Cadastrar'}</button></div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#606060', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={formData.active === 1} onChange={(e) => setFormData({...formData, active: e.target.checked ? 1 : 0})}
+                    style={{ marginRight: '8px' }} />Ativo
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{
+                  padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', cursor: 'pointer'
+                }}>Cancelar</button>
+                <button type="submit" style={{
+                  padding: '10px 20px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+                }}>{editingItem ? 'Salvar' : 'Cadastrar'}</button>
+              </div>
             </form>
           </div>
         </div>

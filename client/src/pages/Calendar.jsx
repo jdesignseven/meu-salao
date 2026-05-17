@@ -1,29 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
+import { Plus, MessageCircle } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 function getAuthHeader() {
   const token = localStorage.getItem('token');
   return { Authorization: `Bearer ${token}` };
 }
-
-const statusMap = {
-  agendado: { label: 'Agendado', color: '#3498db', bg: '#ebf5fb' },
-  atendendo: { label: 'Atendendo', color: '#f39c12', bg: '#fef9e7' },
-  atendido: { label: 'Atendido', color: '#27ae60', bg: '#eafaf1' },
-  atrasado: { label: 'Atrasado', color: '#e74c3c', bg: '#fdedec' },
-  cancelado: { label: 'Cancelado', color: '#95a5a6', bg: '#f2f3f4' },
-  confirmado: { label: 'Confirmado', color: '#1abc9c', bg: '#e8f8f5' },
-  espera: { label: 'Espera', color: '#9b59b6', bg: '#f5eef8' },
-  faltou: { label: 'Faltou', color: '#34495e', bg: '#ebedef' },
-  concluido: { label: 'Concluido', color: '#2ecc71', bg: '#eafaf1' },
-};
 
 export default function Calendar() {
   const calendarRef = useRef(null);
@@ -36,12 +25,15 @@ export default function Calendar() {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [editingAppointment, setEditingAppointment] = useState(null);
-  const [viewMode, setViewMode] = useState('timeGridWeek');
   const [formData, setFormData] = useState({
-    client_id: '', employee_id: '', service_id: '',
-    date: '', time: '', notes: '', status: 'agendado'
+    client_id: '', employee_id: '', service_id: '', date: '', time: '', notes: '', status: 'agendado'
   });
   const [employeeFilter, setEmployeeFilter] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -61,33 +53,46 @@ export default function Calendar() {
     finally { setLoading(false); }
   };
 
-  const events = appointments
-    .filter(a => !employeeFilter || a.employee_id === parseInt(employeeFilter))
-    .map(a => {
-      const statusInfo = statusMap[a.status] || statusMap.agendado;
-      const service = services.find(s => s.id === a.service_id);
-      const employee = employees.find(e => e.id === a.employee_id);
-      return {
-        id: a.id.toString(),
-        title: `${a.client_name} - ${a.service_name || service?.name || ''}`,
-        start: `${a.date}T${a.time}`,
-        end: service ? getEndTime(`${a.date}T${a.time}`, service.duration_minutes) : `${a.date}T${a.time}`,
-        backgroundColor: statusInfo.color,
-        borderColor: statusInfo.color,
-        textColor: '#fff',
-        extendedProps: { ...a, employee_name: employee?.name || '', service_duration: service?.duration_minutes || 0 },
-        status: a.status
-      };
-    });
+  const getStatusColor = (status) => {
+    const colors = {
+      agendado: '#002cd6',
+      confirmado: '#00bcd4',
+      aguardando: '#ff9800',
+      atendendo: '#e91e63',
+      atendido: '#4caf50',
+      concluido: '#1b5e20',
+      cancelado: '#9e9e9e',
+      espera: '#9c27b0',
+      faltou: '#607d8b',
+      atrasado: '#f44336'
+    };
+    return colors[status] || '#002cd6';
+  };
 
-  function getEndTime(start, durationMinutes) {
+  const getEndTime = (start, durationMinutes) => {
     const [datePart, timePart] = start.split('T');
     const [hours, minutes] = timePart.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes + durationMinutes;
     const endHours = Math.floor(totalMinutes / 60);
     const endMinutes = totalMinutes % 60;
     return `${datePart}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
-  }
+  };
+
+  const events = appointments
+    .filter(a => !employeeFilter || a.employee_id === parseInt(employeeFilter))
+    .map(a => {
+      const service = services.find(s => s.id === a.service_id);
+      return {
+        id: a.id.toString(),
+        title: `${a.client_name} - ${a.service_name || ''}`,
+        start: `${a.date}T${a.time}`,
+        end: service ? getEndTime(`${a.date}T${a.time}`, service.duration_minutes) : `${a.date}T${a.time}`,
+        backgroundColor: getStatusColor(a.status),
+        borderColor: getStatusColor(a.status),
+        textColor: '#fff',
+        extendedProps: { ...a }
+      };
+    });
 
   const handleDateClick = (arg) => {
     const dateStr = arg.dateStr.split('T')[0];
@@ -98,54 +103,49 @@ export default function Calendar() {
   };
 
   const handleEventClick = (clickInfo) => {
-    const apt = appointments.find(a => a.id === parseInt(clickInfo.event.id));
-    if (apt) {
-      setSelectedAppointment(apt);
-      setShowDetails(true);
-    }
+    setSelectedAppointment(clickInfo.event.extendedProps);
+    setShowDetails(true);
   };
 
-  const handleEventDrop = async (dropInfo) => {
-    const aptId = parseInt(dropInfo.event.id);
-    const newDate = dropInfo.event.start.toISOString().split('T')[0];
-    const newTime = dropInfo.event.start.toTimeString().substring(0, 5);
-    try {
-      const res = await fetch(`${API_URL}/appointments/${aptId}`, {
-        method: 'PUT',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: newDate, time: newTime })
+  const openModal = (appointment = null) => {
+    if (appointment) {
+      setEditingAppointment(appointment);
+      setFormData({
+        client_id: appointment.client_id,
+        employee_id: appointment.employee_id,
+        service_id: appointment.service_id,
+        date: appointment.date,
+        time: appointment.time,
+        notes: appointment.notes || '',
+        status: appointment.status
       });
-      if (res.ok) fetchData();
-      else dropInfo.revert();
-    } catch { dropInfo.revert(); }
-  };
-
-  const openEditModal = (apt) => {
-    setEditingAppointment(apt);
-    setFormData({
-      client_id: apt.client_id, employee_id: apt.employee_id, service_id: apt.service_id,
-      date: apt.date, time: apt.time, notes: apt.notes || '', status: apt.status
-    });
-    setShowDetails(false);
+    } else {
+      setEditingAppointment(null);
+      setFormData({ client_id: '', employee_id: employeeFilter || '', service_id: '', date: '', time: '', notes: '', status: 'agendado' });
+    }
     setShowModal(true);
   };
+
+  const closeModal = () => { setShowModal(false); setEditingAppointment(null); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const url = editingAppointment ? `${API_URL}/appointments/${editingAppointment.id}` : `${API_URL}/appointments`;
       const method = editingAppointment ? 'PUT' : 'POST';
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
       const res = await fetch(url, {
         method,
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
+          ...formData,
           client_id: parseInt(formData.client_id),
           employee_id: parseInt(formData.employee_id),
-          service_id: parseInt(formData.service_id),
-          date: formData.date, time: formData.time, notes: formData.notes, status: formData.status
+          service_id: parseInt(formData.service_id)
         })
       });
-      if (res.ok) { fetchData(); setShowModal(false); }
+      if (res.ok) { fetchData(); closeModal(); }
     } catch (error) { console.error('Error saving appointment:', error); }
   };
 
@@ -159,106 +159,217 @@ export default function Calendar() {
 
   const handleStatusChange = async (id, status) => {
     try {
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
       const res = await fetch(`${API_URL}/appointments/${id}`, {
         method: 'PUT',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status })
       });
-      if (res.ok) { fetchData(); setSelectedAppointment({ ...selectedAppointment, status }); }
+      if (res.ok) {
+        fetchData();
+        setShowDetails(false);
+      }
     } catch (error) { console.error('Error updating status:', error); }
   };
 
-  const changeView = (view) => {
-    setViewMode(view);
-    const calendarApi = calendarRef.current.getApi();
-    calendarApi.changeView(view);
+  const openCamera = async (type) => {
+    setCameraTarget(type);
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+      setShowCamera(false);
+    }
   };
 
-  if (loading) return <div className="loading">Carregando...</div>;
+  const closeCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+    setCameraTarget(null);
+  }, []);
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const photoData = canvas.toDataURL('image/jpeg', 0.8);
+    const key = cameraTarget === 'before' ? 'before_photo' : 'after_photo';
+    setSelectedAppointment(prev => prev ? { ...prev, [key]: photoData } : prev);
+    savePhoto(photoData, cameraTarget);
+    closeCamera();
+  };
+
+  const savePhoto = async (photoData, type) => {
+    const key = type === 'before' ? 'before_photo' : 'after_photo';
+    try {
+      const headers = getAuthHeader();
+      headers['Content-Type'] = 'application/json';
+      const res = await fetch(`${API_URL}/appointments/${selectedAppointment.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ [key]: photoData })
+      });
+      if (res.ok) fetchData();
+    } catch (error) {
+      console.error('Error saving photo:', error);
+    }
+  };
+
+  const getWhatsAppLink = (phone) => {
+    if (!phone) return null;
+    const cleaned = phone.replace(/\D/g, '').replace(/^0+/, '');
+    return `https://wa.me/${cleaned.startsWith('55') ? cleaned : `55${cleaned}`}`;
+  };
+
+  const handlePhotoUpload = async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const photoData = reader.result;
+      const key = type === 'before' ? 'before_photo' : 'after_photo';
+      setSelectedAppointment(prev => prev ? { ...prev, [key]: photoData } : prev);
+      await savePhoto(photoData, type);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  if (loading) return <div style={{ padding: '24px', color: '#606060' }}>Carregando...</div>;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Agenda</h1>
-        <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
-          <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} style={{padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px'}}>
-            <option value="">Todos os Profissionais</option>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 300, color: '#000', margin: 0 }}>Agenda</h1>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', background: '#fff' }}>
+            <option value="">Todos os profissionais</option>
             {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
-          <button onClick={() => { setEditingAppointment(null); setFormData({ client_id: '', employee_id: employeeFilter || '', service_id: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', status: 'agendado' }); setShowModal(true); }} className="btn-primary">+ Novo Agendamento</button>
+          <button onClick={() => openModal()} style={{
+            display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#002cd6', color: '#fff',
+            padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+          }}>
+            <Plus size={16} /> Novo Agendamento
+          </button>
         </div>
       </div>
 
-      <div style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
-        <div style={{display: 'flex', gap: '8px', marginBottom: '15px'}}>
-          <button onClick={() => changeView('dayGridMonth')} className={`view-btn ${viewMode === 'dayGridMonth' ? 'active' : ''}`} style={{padding: '8px 16px', border: viewMode === 'dayGridMonth' ? '2px solid #3498db' : '1px solid #ddd', background: viewMode === 'dayGridMonth' ? '#3498db' : 'white', color: viewMode === 'dayGridMonth' ? 'white' : '#333', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold'}}>Mês</button>
-          <button onClick={() => changeView('timeGridWeek')} className={`view-btn ${viewMode === 'timeGridWeek' ? 'active' : ''}`} style={{padding: '8px 16px', border: viewMode === 'timeGridWeek' ? '2px solid #3498db' : '1px solid #ddd', background: viewMode === 'timeGridWeek' ? '#3498db' : 'white', color: viewMode === 'timeGridWeek' ? 'white' : '#333', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold'}}>Semana</button>
-          <button onClick={() => changeView('timeGridDay')} className={`view-btn ${viewMode === 'timeGridDay' ? 'active' : ''}`} style={{padding: '8px 16px', border: viewMode === 'timeGridDay' ? '2px solid #3498db' : '1px solid #ddd', background: viewMode === 'timeGridDay' ? '#3498db' : 'white', color: viewMode === 'timeGridDay' ? 'white' : '#333', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold'}}>Dia</button>
-          <button onClick={() => changeView('listWeek')} className={`view-btn ${viewMode === 'listWeek' ? 'active' : ''}`} style={{padding: '8px 16px', border: viewMode === 'listWeek' ? '2px solid #3498db' : '1px solid #ddd', background: viewMode === 'listWeek' ? '#3498db' : 'white', color: viewMode === 'listWeek' ? 'white' : '#333', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold'}}>Lista</button>
-          <div style={{marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-            {Object.entries(statusMap).map(([key, val]) => (
-              <span key={key} style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#555'}}>
-                <span style={{width: '10px', height: '10px', borderRadius: '50%', background: val.color, display: 'inline-block'}}></span>
-                {val.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
+      <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '16px' }}>
         <FullCalendar
           ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView={viewMode}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth'
+          }}
           locale={ptBrLocale}
-          headerToolbar={false}
-          editable={true}
-          selectable={true}
-          selectMirror={true}
-          dayMaxEvents={3}
           events={events}
           dateClick={handleDateClick}
           eventClick={handleEventClick}
-          eventDrop={handleEventDrop}
-          slotMinTime="07:00:00"
-          slotMaxTime="21:00:00"
           allDaySlot={false}
-          slotDuration="00:30:00"
-          slotLabelInterval="01:00:00"
-          nowIndicator={true}
           height="auto"
-          eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          buttonText={{ today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' }}
         />
       </div>
 
       {/* Details Modal */}
       {showDetails && selectedAppointment && (
-        <div className="modal-overlay" onClick={() => setShowDetails(false)}>
-          <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{marginBottom: '20px', color: '#2c3e50'}}>Detalhes do Agendamento</h2>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px'}}>
-              <div><strong>Cliente:</strong> {selectedAppointment.client_name}</div>
-              <div><strong>Serviço:</strong> {selectedAppointment.service_name}</div>
-              <div><strong>Profissional:</strong> {selectedAppointment.employee_name}</div>
-              <div><strong>Data:</strong> {new Date(selectedAppointment.date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
-              <div><strong>Horário:</strong> {selectedAppointment.time}</div>
-              <div><strong>Valor:</strong> R$ {selectedAppointment.total_price?.toFixed(2) || '0.00'}</div>
-              <div style={{gridColumn: 'span 2'}}><strong>Observações:</strong> {selectedAppointment.notes || '-'}</div>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setShowDetails(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '4px', padding: '24px', maxWidth: '1000px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: '20px', fontWeight: 500, color: '#000', margin: '0 0 24px' }}>Detalhes do Agendamento</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}><strong style={{ color: '#606060' }}>Cliente:</strong> {selectedAppointment.client_name}
+                {(() => { const client = clients.find(c => c.id === selectedAppointment.client_id); return client?.phone ? <a href={getWhatsAppLink(client.phone)} target="_blank" rel="noopener noreferrer" style={{ color: '#25D366', display: 'inline-flex', alignItems: 'center' }} title="Enviar WhatsApp"><MessageCircle size={18} /></a> : null; })()}
+              </div>
+              <div style={{ fontSize: '14px' }}><strong style={{ color: '#606060' }}>Serviço:</strong> {selectedAppointment.service_name}</div>
+              <div style={{ fontSize: '14px' }}><strong style={{ color: '#606060' }}>Profissional:</strong> {selectedAppointment.employee_name}</div>
+              <div style={{ fontSize: '14px' }}><strong style={{ color: '#606060' }}>Data:</strong> {new Date(selectedAppointment.date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
+              <div style={{ fontSize: '14px' }}><strong style={{ color: '#606060' }}>Horário:</strong> {selectedAppointment.time}</div>
+              <div style={{ fontSize: '14px' }}><strong style={{ color: '#606060' }}>Valor:</strong> R$ {selectedAppointment.total_price?.toFixed(2) || '0.00'}</div>
+              <div style={{ gridColumn: 'span 2', fontSize: '14px' }}><strong style={{ color: '#606060' }}>Observações:</strong> {selectedAppointment.notes || '-'}</div>
             </div>
 
-            <div style={{marginBottom: '20px'}}>
-              <label style={{fontWeight: 'bold', display: 'block', marginBottom: '8px'}}>Alterar Status:</label>
-              <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                {Object.entries(statusMap).map(([key, val]) => (
-                  <button key={key} type="button" onClick={() => handleStatusChange(selectedAppointment.id, key)} style={{padding: '6px 12px', border: selectedAppointment.status === key ? '2px solid ' + val.color : '1px solid #ddd', background: selectedAppointment.status === key ? val.color : 'white', color: selectedAppointment.status === key ? 'white' : val.color, borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold'}}>{val.label}</button>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Alterar Status:</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['agendado', 'confirmado', 'aguardando', 'atendendo', 'atendido', 'concluido', 'cancelado'].map((status) => (
+                  <button key={status} type="button"
+                    onClick={() => handleStatusChange(selectedAppointment.id, status)}
+                    style={{
+                      padding: '6px 12px',
+                      border: selectedAppointment.status === status ? '2px solid ' + getStatusColor(status) : '1px solid #ddd',
+                      background: selectedAppointment.status === status ? getStatusColor(status) : '#fff',
+                      color: selectedAppointment.status === status ? '#fff' : getStatusColor(status),
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
-              <button onClick={() => openEditModal(selectedAppointment)} className="btn-edit">Editar</button>
-              <button onClick={() => handleDelete(selectedAppointment.id)} className="btn-delete">Excluir</button>
-              <button onClick={() => setShowDetails(false)} className="btn-secondary">Fechar</button>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '400px' }}>
+                  <strong style={{ fontSize: '13px', color: '#606060' }}>Antes</strong>
+                  <div style={{ width: '100%', height: '350px', background: '#f5f5f5', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999', marginTop: '4px', overflow: 'hidden' }}>
+                    {selectedAppointment.before_photo ? <img src={selectedAppointment.before_photo} alt="Antes" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : 'Nenhuma'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <label style={{ flex: 1, cursor: 'pointer', position: 'relative' }}>
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, 'before')} style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }} />
+                      <span style={{ display: 'block', width: '100%', padding: '10px', background: '#555', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', textAlign: 'center', boxSizing: 'border-box' }}>ALTERAR FOTO</span>
+                    </label>
+                    <button onClick={() => openCamera('before')} style={{ flex: 1, padding: '10px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', textAlign: 'center', cursor: 'pointer' }}>TIRAR FOTO</button>
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: '400px' }}>
+                  <strong style={{ fontSize: '13px', color: '#606060' }}>Depois</strong>
+                  <div style={{ width: '100%', height: '350px', background: '#f5f5f5', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999', marginTop: '4px', overflow: 'hidden' }}>
+                    {selectedAppointment.after_photo ? <img src={selectedAppointment.after_photo} alt="Depois" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : 'Nenhuma'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <label style={{ flex: 1, cursor: 'pointer', position: 'relative' }}>
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, 'after')} style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }} />
+                      <span style={{ display: 'block', width: '100%', padding: '10px', background: '#555', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', textAlign: 'center', boxSizing: 'border-box' }}>ALTERAR FOTO</span>
+                    </label>
+                    <button onClick={() => openCamera('after')} style={{ flex: 1, padding: '10px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', textAlign: 'center', cursor: 'pointer' }}>TIRAR FOTO</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowDetails(false); openModal(selectedAppointment); }} style={{
+                padding: '10px 20px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+              }}>Editar</button>
+              <button onClick={() => handleDelete(selectedAppointment.id)} style={{
+                padding: '10px 20px', background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+              }}>Excluir</button>
+              <button onClick={() => setShowDetails(false)} style={{
+                padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', cursor: 'pointer'
+              }}>Fechar</button>
             </div>
           </div>
         </div>
@@ -266,26 +377,100 @@ export default function Calendar() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-            <h2>{editingAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}</h2>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setShowModal(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '4px', padding: '24px', maxWidth: '500px', width: '90%' }}
+            onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: '20px', fontWeight: 500, color: '#000', margin: '0 0 24px' }}>
+              {editingAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}
+            </h2>
             <form onSubmit={handleSubmit}>
-              <div className="form-group"><label>Cliente *</label><select value={formData.client_id} onChange={(e) => setFormData({ ...formData, client_id: e.target.value })} required><option value="">Selecione</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-              <div className="form-row">
-                <div className="form-group"><label>Profissional *</label><select value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} required><option value="">Selecione</option>{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></div>
-                <div className="form-group"><label>Serviço *</label><select value={formData.service_id} onChange={(e) => setFormData({ ...formData, service_id: e.target.value })} required><option value="">Selecione</option>{services.map((s) => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>)}</select></div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Cliente *</label>
+                <select value={formData.client_id} onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} required>
+                  <option value="">Selecione</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
-              <div className="form-row">
-                <div className="form-group"><label>Data *</label><input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required /></div>
-                <div className="form-group"><label>Hora *</label><input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} required /></div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Profissional *</label>
+                  <select value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} required>
+                    <option value="">Selecione</option>
+                    {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Serviço *</label>
+                  <select value={formData.service_id} onChange={(e) => setFormData({ ...formData, service_id: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} required>
+                    <option value="">Selecione</option>
+                    {services.map((s) => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>)}
+                  </select>
+                </div>
               </div>
-              <div className="form-group"><label>Status</label><select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>{Object.entries(statusMap).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}</select></div>
-              <div className="form-group"><label>Observações</label><textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows="2" /></div>
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
-                <button type="submit" className="btn-primary">{editingAppointment ? 'Salvar' : 'Agendar'}</button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Data *</label>
+                  <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} required />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Hora *</label>
+                  <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }} required />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Status</label>
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}>
+                  <option value="agendado">Agendado</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="aguardando">Aguardando</option>
+                  <option value="atendendo">Atendendo</option>
+                  <option value="atendido">Atendido</option>
+                  <option value="concluido">Concluído</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Observações</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', minHeight: '80px', resize: 'vertical' }} rows="3" />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{
+                  padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', cursor: 'pointer'
+                }}>Cancelar</button>
+                <button type="submit" style={{
+                  padding: '10px 20px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+                }}>{editingAppointment ? 'Salvar' : 'Agendar'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Modal */}
+      {showCamera && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={closeCamera}>
+          <div style={{ backgroundColor: '#000', borderRadius: '8px', padding: '16px', maxWidth: '600px', width: '95%' }}
+            onClick={(e) => e.stopPropagation()}>
+            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', borderRadius: '4px', display: 'block' }} />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
+              <button onClick={capturePhoto} style={{ padding: '12px 32px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}>📸 Capturar</button>
+              <button onClick={closeCamera} style={{ padding: '12px 32px', background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}>Cancelar</button>
+            </div>
           </div>
         </div>
       )}

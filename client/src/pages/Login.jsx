@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-const API_URL = 'http://localhost:3001/api'
+const API_URL = '/api'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -30,30 +30,58 @@ export default function Login() {
       }
 
       login(data.user, data.token)
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       setError('Erro ao fazer login')
     }
   }
 
   return (
-    <div className="auth-form">
-      <h2>beautysis</h2>
-      <p className="auth-subtitle">Faça login para continuar</p>
-      {error && <p className="error">{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fafafa', fontFamily: "'Roboto', sans-serif" }}>
+      <div style={{ backgroundColor: '#fff', padding: '48px', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 300, color: '#002cd6', marginBottom: '8px', fontFamily: "'Coolvetica Book', sans-serif" }}>beautysis</h1>
+          <p style={{ fontSize: '14px', color: '#606060' }}>Faça login para continuar</p>
         </div>
-        <div className="form-group">
-          <label>Senha</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+
+        {error && <div style={{ backgroundColor: '#ffebee', color: '#d32f2f', padding: '12px', borderRadius: '4px', marginBottom: '16px', fontSize: '14px' }}>{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#606060', marginBottom: '4px', fontWeight: 500 }}>E-mail</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+            />
+          </div>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#606060', marginBottom: '4px', fontWeight: 500 }}>Senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+            />
+          </div>
+          <button
+            type="submit"
+            style={{ width: '100%', backgroundColor: '#002cd6', color: '#fff', padding: '12px', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+          >
+            Entrar
+          </button>
+        </form>
+
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#606060' }}>
+          Não tem conta? <Link to="/register" style={{ color: '#002cd6', textDecoration: 'none' }}>Registre-se</Link>
         </div>
-        <button type="submit" className="btn">Entrar</button>
-      </form>
-      <div className="link">
-        Não tem conta? <Link to="/register">Registre-se</Link>
+
+        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px', color: '#606060' }}>
+          <Link to="/" style={{ color: '#606060', textDecoration: 'none' }}>← Voltar para home</Link>
+        </div>
       </div>
     </div>
   )

@@ -1,0 +1,13 @@
+{
+  "name": "secvc-salao-beauty",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && npm install && node index.js",
+    "dev": "cd server && npx nodemon index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

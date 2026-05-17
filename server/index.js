@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -10,7 +11,7 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
@@ -58,6 +59,29 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role }, token });
 });
 
+// ==================== PUBLIC ====================
+app.get('/api/public/employees', (req, res) => {
+  const db = getDB();
+  res.json(db.prepare('SELECT * FROM employees WHERE active = 1 ORDER BY name').all());
+});
+
+app.get('/api/public/services', (req, res) => {
+  const db = getDB();
+  res.json(db.prepare('SELECT * FROM services WHERE active = 1 ORDER BY name').all());
+});
+
+app.post('/api/pre-register', (req, res) => {
+  const db = getDB();
+  const { name, gender, cpf, phone, profession, holder_type, cep, number } = req.body;
+  if (!name || !phone) return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios' });
+
+  const result = db.prepare(`INSERT INTO clients (name, gender, cpf, phone, profession, holder_type, cep, number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    name, gender || '', cpf || '', phone, profession || '', holder_type || 'Titular', cep || '', number || ''
+  );
+
+  res.json({ success: true, id: result.lastInsertRowid });
+});
+
 // ==================== CLIENTS ====================
 app.get('/api/clients', authMiddleware, (req, res) => {
   const db = getDB();
@@ -89,6 +113,14 @@ app.post('/api/clients', authMiddleware, (req, res) => {
   const db = getDB();
   const { name, gender, birth_date, cpf, rg, phone, landline, email, how_found, holder_type, plan, cep, street, number, complement, neighborhood, city, state, photo, notes, responsible_name, responsible_birth_date, responsible_cpf, responsible_phone, profession, foreigner, app_access_code, anamnese_capilar, services, financial, documents } = req.body;
 
+  if (cpf && cpf.trim()) {
+    const existing = db.prepare("SELECT id FROM clients WHERE cpf = ? AND cpf != ''").get(cpf.trim());
+    if (existing) return res.status(409).json({ error: 'Já existe um cliente cadastrado com este CPF' });
+  } else {
+    const existing = db.prepare('SELECT id FROM clients WHERE name = ? AND phone = ?').get(name, phone || '');
+    if (existing) return res.status(409).json({ error: 'Já existe um cliente cadastrado com este nome e telefone' });
+  }
+
   const result = db.prepare(`INSERT INTO clients (name, gender, birth_date, cpf, rg, phone, landline, email, how_found, holder_type, plan, cep, street, number, complement, neighborhood, city, state, photo, notes, responsible_name, responsible_birth_date, responsible_cpf, responsible_phone, profession, foreigner, app_access_code, anamnese_capilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     name, gender || '', birth_date || '', cpf || '', rg || '', phone || '', landline || '', email || '', how_found || '', holder_type || 'Titular', plan || '', cep || '', street || '', number || '', complement || '', neighborhood || '', city || '', state || '', photo || '', notes || '', responsible_name || '', responsible_birth_date || '', responsible_cpf || '', responsible_phone || '', profession || '', foreigner ? 1 : 0, app_access_code || '', anamnese_capilar || ''
   );
@@ -108,10 +140,16 @@ app.post('/api/clients', authMiddleware, (req, res) => {
 
 app.put('/api/clients/:id', authMiddleware, (req, res) => {
   const db = getDB();
+  const id = parseInt(req.params.id);
   const { name, gender, birth_date, cpf, rg, phone, landline, email, how_found, holder_type, plan, cep, street, number, complement, neighborhood, city, state, photo, notes, responsible_name, responsible_birth_date, responsible_cpf, responsible_phone, profession, foreigner, app_access_code, anamnese_capilar, services } = req.body;
 
+  if (cpf && cpf.trim()) {
+    const existing = db.prepare("SELECT id FROM clients WHERE cpf = ? AND cpf != '' AND id != ?").get(cpf.trim(), id);
+    if (existing) return res.status(409).json({ error: 'Já existe outro cliente cadastrado com este CPF' });
+  }
+
   db.prepare(`UPDATE clients SET name=?, gender=?, birth_date=?, cpf=?, rg=?, phone=?, landline=?, email=?, how_found=?, holder_type=?, plan=?, cep=?, street=?, number=?, complement=?, neighborhood=?, city=?, state=?, photo=?, notes=?, responsible_name=?, responsible_birth_date=?, responsible_cpf=?, responsible_phone=?, profession=?, foreigner=?, app_access_code=?, anamnese_capilar=? WHERE id=?`).run(
-    name, gender || '', birth_date || '', cpf || '', rg || '', phone || '', landline || '', email || '', how_found || '', holder_type || 'Titular', plan || '', cep || '', street || '', number || '', complement || '', neighborhood || '', city || '', state || '', photo || '', notes || '', responsible_name || '', responsible_birth_date || '', responsible_cpf || '', responsible_phone || '', profession || '', foreigner ? 1 : 0, app_access_code || '', anamnese_capilar || '', parseInt(req.params.id)
+    name, gender || '', birth_date || '', cpf || '', rg || '', phone || '', landline || '', email || '', how_found || '', holder_type || 'Titular', plan || '', cep || '', street || '', number || '', complement || '', neighborhood || '', city || '', state || '', photo || '', notes || '', responsible_name || '', responsible_birth_date || '', responsible_cpf || '', responsible_phone || '', profession || '', foreigner ? 1 : 0, app_access_code || '', anamnese_capilar || '', id
   );
 
   if (services !== undefined) {
@@ -128,6 +166,36 @@ app.put('/api/clients/:id', authMiddleware, (req, res) => {
 app.delete('/api/clients/:id', authMiddleware, (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM clients WHERE id = ?').run(parseInt(req.params.id));
+  res.json({ success: true });
+});
+
+// ==================== PLANS ====================
+app.get('/api/plans', authMiddleware, (req, res) => {
+  const db = getDB();
+  const { active } = req.query;
+  if (active === '1') res.json(db.prepare('SELECT * FROM plans WHERE active = 1 ORDER BY name').all());
+  else res.json(db.prepare('SELECT * FROM plans ORDER BY name').all());
+});
+
+app.post('/api/plans', authMiddleware, (req, res) => {
+  const db = getDB();
+  const { name, description, price, benefits } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nome do plano é obrigatório' });
+  const result = db.prepare('INSERT INTO plans (name, description, price, benefits) VALUES (?, ?, ?, ?)').run(name, description || '', price || 0, benefits || '');
+  const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(result.lastInsertRowid);
+  res.json(plan);
+});
+
+app.put('/api/plans/:id', authMiddleware, (req, res) => {
+  const db = getDB();
+  const { name, description, price, benefits, active } = req.body;
+  db.prepare('UPDATE plans SET name=?, description=?, price=?, benefits=?, active=? WHERE id=?').run(name, description || '', price || 0, benefits || '', active !== undefined ? active : 1, parseInt(req.params.id));
+  res.json({ success: true });
+});
+
+app.delete('/api/plans/:id', authMiddleware, (req, res) => {
+  const db = getDB();
+  db.prepare('DELETE FROM plans WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
@@ -328,13 +396,38 @@ app.post('/api/appointments', authMiddleware, (req, res) => {
   res.json(apt);
 });
 
+app.post('/api/public/appointments', (req, res) => {
+  const db = getDB();
+  const { name, phone, email, employee_id, service_id, date, time, notes } = req.body;
+  
+  // Check if client exists by phone or email
+  let client = db.prepare('SELECT id FROM clients WHERE phone = ? OR email = ?').get(phone, email || '');
+  let clientId;
+  
+  if (!client) {
+    const result = db.prepare('INSERT INTO clients (name, phone, email) VALUES (?, ?, ?)').run(name, phone, email || '');
+    clientId = result.lastInsertRowid;
+  } else {
+    clientId = client.id;
+  }
+  
+  const service = db.prepare('SELECT * FROM services WHERE id = ?').get(parseInt(service_id));
+  const total_price = service ? service.price : 0;
+  
+  const aptResult = db.prepare('INSERT INTO appointments (client_id, employee_id, service_id, date, time, status, notes, total_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+    clientId, parseInt(employee_id), parseInt(service_id), date, time, 'scheduled', notes || '', total_price
+  );
+  
+  res.json({ success: true, id: aptResult.lastInsertRowid });
+});
+
 app.put('/api/appointments/:id', authMiddleware, (req, res) => {
   const db = getDB();
   const existing = db.prepare('SELECT * FROM appointments WHERE id = ?').get(parseInt(req.params.id));
   if (!existing) return res.status(404).json({ error: 'Agendamento não encontrado' });
 
-  const { client_id, employee_id, service_id, date, time, status, notes } = req.body;
-  db.prepare('UPDATE appointments SET client_id=?, employee_id=?, service_id=?, date=?, time=?, status=?, notes=? WHERE id=?').run(
+  const { client_id, employee_id, service_id, date, time, status, notes, before_photo, after_photo } = req.body;
+  db.prepare('UPDATE appointments SET client_id=?, employee_id=?, service_id=?, date=?, time=?, status=?, notes=?, before_photo=?, after_photo=? WHERE id=?').run(
     client_id !== undefined ? parseInt(client_id) : existing.client_id,
     employee_id !== undefined ? parseInt(employee_id) : existing.employee_id,
     service_id !== undefined ? parseInt(service_id) : existing.service_id,
@@ -342,6 +435,8 @@ app.put('/api/appointments/:id', authMiddleware, (req, res) => {
     time || existing.time,
     status || existing.status,
     notes !== undefined ? notes : existing.notes,
+    before_photo !== undefined ? before_photo : existing.before_photo,
+    after_photo !== undefined ? after_photo : existing.after_photo,
     parseInt(req.params.id)
   );
   res.json({ success: true });
@@ -864,6 +959,16 @@ app.put('/api/settings/:key', authMiddleware, (req, res) => {
   const { value } = req.body;
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(req.params.key, value);
   res.json({ success: true });
+});
+
+// Servir frontend buildado em produção
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientDist));
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    return res.sendFile(path.join(clientDist, 'index.html'));
+  }
+  res.status(404).json({ error: 'Endpoint não encontrado' });
 });
 
 // Iniciar servidor

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Landmark } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 function getAuthHeader() {
   const token = localStorage.getItem('token');
@@ -34,152 +35,98 @@ export default function FinancialDashboard() {
     finally { setLoading(false); }
   };
 
-  const monthLabel = (dateStr) => {
-    const [y, m] = dateStr.split('-');
-    return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  };
-
-  if (loading) return <div className="loading">Carregando...</div>;
+  if (loading) return <div style={{ padding: '24px', color: '#606060' }}>Carregando...</div>;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Financeiro</h1>
-        <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
-          <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{padding: '8px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px'}} />
-          <Link to="/financeiro/lancamentos" className="btn-primary">📝 Lançamentos</Link>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 300, color: '#000', margin: 0 }}>Financeiro</h1>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', background: '#fff' }} />
+          <Link to="/financeiro/lancamentos" style={{
+            display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#002cd6', color: '#fff',
+            padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '14px', fontWeight: 500, textDecoration: 'none'
+          }}><DollarSign size={16} /> Lançamentos</Link>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ backgroundColor: '#002cd6', padding: '8px', borderRadius: '4px' }}><DollarSign size={20} color="#fff" /></div>
+            <span style={{ fontSize: '14px', color: '#606060' }}>Receitas Pagas</span>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 500, color: '#002cd6' }}>R$ {summary.receitasPagas.toFixed(2)}</div>
+        </div>
+        <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ backgroundColor: '#f44336', padding: '8px', borderRadius: '4px' }}><ArrowDownRight size={20} color="#fff" /></div>
+            <span style={{ fontSize: '14px', color: '#606060' }}>Despesas Pagas</span>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 500, color: '#f44336' }}>R$ {summary.despesasPagas.toFixed(2)}</div>
+        </div>
+        <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ backgroundColor: summary.saldo >= 0 ? '#4caf50' : '#f44336', padding: '8px', borderRadius: '4px' }}><TrendingUp size={20} color="#fff" /></div>
+            <span style={{ fontSize: '14px', color: '#606060' }}>Saldo do Mês</span>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 500, color: summary.saldo >= 0 ? '#4caf50' : '#f44336' }}>R$ {summary.saldo.toFixed(2)}</div>
+        </div>
+        <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ backgroundColor: '#002cd6', padding: '8px', borderRadius: '4px' }}><Landmark size={20} color="#fff" /></div>
+            <span style={{ fontSize: '14px', color: '#606060' }}>Saldo Total</span>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 500, color: '#002cd6' }}>R$ {summary.totalAccounts.toFixed(2)}</div>
         </div>
       </div>
 
       {/* Overdue Alert */}
       {overdue.length > 0 && (
-        <div style={{background: '#fdedec', border: '1px solid #e74c3c', borderRadius: '8px', padding: '15px', marginBottom: '20px'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <span style={{fontWeight: 'bold', color: '#e74c3c', fontSize: '16px'}}>⚠️ {overdue.length} lançamento(s) vencido(s)!</span>
-            <Link to="/financeiro/lancamentos?status=vencido" style={{color: '#e74c3c', textDecoration: 'underline', fontSize: '14px'}}>Ver todos →</Link>
+        <div style={{ background: '#ffebee', border: '1px solid #ffcdd2', borderRadius: '4px', padding: '16px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontWeight: 500, color: '#d32f2f', fontSize: '14px' }}>⚠️ {overdue.length} lançamento(s) vencido(s)!</span>
+            <Link to="/financeiro/lancamentos?status=vencido" style={{ color: '#d32f2f', textDecoration: 'none', fontSize: '14px' }}>Ver todos →</Link>
           </div>
-          <div style={{marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {overdue.slice(0, 5).map(t => (
-              <div key={t.id} style={{background: 'white', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', border: '1px solid #f5c6cb'}}>
-                <strong>{t.description}</strong> — <span style={{color: '#e74c3c'}}>R$ {t.amount.toFixed(2)}</span> (Venc: {new Date(t.due_date + 'T12:00:00').toLocaleDateString('pt-BR')})
+              <div key={t.id} style={{ background: '#fff', padding: '8px 12px', borderRadius: '4px', fontSize: '12px', border: '1px solid #ffcdd2' }}>
+                <strong>{t.description}</strong> — <span style={{ color: '#d32f2f' }}>R$ {t.amount.toFixed(2)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Main Stats */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: '#eafaf1', color: '#27ae60'}}>💰</div>
-          <div className="stat-info"><h3 style={{color: '#27ae60'}}>R$ {summary.receitasPagas.toFixed(2)}</h3><p>Receitas Pagas</p></div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: '#fdedec', color: '#e74c3c'}}>📉</div>
-          <div className="stat-info"><h3 style={{color: '#e74c3c'}}>R$ {summary.despesasPagas.toFixed(2)}</h3><p>Despesas Pagas</p></div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: summary.saldo >= 0 ? '#eafaf1' : '#fdedec', color: summary.saldo >= 0 ? '#27ae60' : '#e74c3c'}}>📊</div>
-          <div className="stat-info"><h3 style={{color: summary.saldo >= 0 ? '#27ae60' : '#e74c3c'}}>R$ {summary.saldo.toFixed(2)}</h3><p>Saldo do Mês</p></div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: '#ebf5fb', color: '#3498db'}}>🏦</div>
-          <div className="stat-info"><h3 style={{color: '#3498db'}}>R$ {summary.totalAccounts.toFixed(2)}</h3><p>Saldo Total Contas</p></div>
-        </div>
-      </div>
 
       {/* Pending */}
-      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px'}}>
-        <div style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
-          <h3 style={{color: '#2c3e50', marginBottom: '15px'}}>Receitas Pendentes</h3>
-          <div style={{fontSize: '28px', fontWeight: 'bold', color: '#f39c12', marginBottom: '15px'}}>R$ {summary.receitasPendentes.toFixed(2)}</div>
-          {upcoming.filter(t => t.type === 'receita').length > 0 ? upcoming.filter(t => t.type === 'receita').slice(0, 5).map(t => (
-            <div key={t.id} style={{display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee', fontSize: '13px'}}>
-              <span>{t.description}</span>
-              <span style={{fontWeight: 'bold', color: '#27ae60'}}>R$ {t.amount.toFixed(2)}</span>
-            </div>
-          )) : <p style={{color: '#999', fontSize: '13px'}}>Nenhuma receita próxima</p>}
-        </div>
-        <div style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
-          <h3 style={{color: '#2c3e50', marginBottom: '15px'}}>Despesas Pendentes</h3>
-          <div style={{fontSize: '28px', fontWeight: 'bold', color: '#e74c3c', marginBottom: '15px'}}>R$ {summary.despesasPendentes.toFixed(2)}</div>
-          {upcoming.filter(t => t.type === 'despesa').length > 0 ? upcoming.filter(t => t.type === 'despesa').slice(0, 5).map(t => (
-            <div key={t.id} style={{display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee', fontSize: '13px'}}>
-              <span>{t.description}</span>
-              <span style={{fontWeight: 'bold', color: '#e74c3c'}}>R$ {t.amount.toFixed(2)}</span>
-            </div>
-          )) : <p style={{color: '#999', fontSize: '13px'}}>Nenhuma despesa próxima</p>}
-        </div>
-      </div>
-
-      {/* Accounts */}
-      <div style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginTop: '20px'}}>
-        <h3 style={{color: '#2c3e50', marginBottom: '15px'}}>Saldos por Conta</h3>
-        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px'}}>
-          {accountsSummary?.accounts.map(a => (
-            <div key={a.id} style={{background: '#f8f9fa', padding: '15px', borderRadius: '8px', textAlign: 'center'}}>
-              <div style={{fontSize: '24px', marginBottom: '5px'}}>{a.type === 'dinheiro' ? '💵' : a.type === 'banco' ? '🏦' : a.type === 'digital' ? '📱' : '💳'}</div>
-              <div style={{fontSize: '12px', color: '#777', marginBottom: '5px'}}>{a.name}</div>
-              <div style={{fontSize: '20px', fontWeight: 'bold', color: '#2c3e50'}}>R$ {a.balance.toFixed(2)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Category Breakdown */}
-      {summary.byCategory.length > 0 && (
-        <div style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginTop: '20px'}}>
-          <h3 style={{color: '#2c3e50', marginBottom: '15px'}}>Por Categoria (Pago)</h3>
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
-            {['receita', 'despesa'].map(type => (
-              <div key={type}>
-                <h4 style={{color: type === 'receita' ? '#27ae60' : '#e74c3c', marginBottom: '10px', fontSize: '14px', textTransform: 'capitalize'}}>{type === 'receita' ? 'Receitas' : 'Despesas'}</h4>
-                {summary.byCategory.filter(c => c.type === type).map(cat => {
-                  const maxVal = Math.max(...summary.byCategory.filter(c => c.type === type).map(c => c.total));
-                  const pct = maxVal > 0 ? (cat.total / maxVal * 100) : 0;
-                  return (
-                    <div key={cat.id} style={{marginBottom: '10px'}}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px'}}>
-                        <span>{cat.icon} {cat.name}</span>
-                        <span style={{fontWeight: 'bold'}}>R$ {cat.total.toFixed(2)} ({cat.count})</span>
-                      </div>
-                      <div style={{height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden'}}>
-                        <div style={{height: '100%', width: `${pct}%`, background: cat.color, borderRadius: '4px', transition: 'width 0.3s'}}></div>
-                      </div>
-                    </div>
-                  );
-                })}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 500, color: '#000', margin: '0 0 12px' }}>Receitas Pendentes</h3>
+          <div style={{ fontSize: '24px', fontWeight: 500, color: '#ff9800', marginBottom: '16px' }}>R$ {summary.receitasPendentes.toFixed(2)}</div>
+          {upcoming.filter(t => t.type === 'receita').length > 0 ? (
+            upcoming.filter(t => t.type === 'receita').slice(0, 5).map(t => (
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee', fontSize: '13px' }}>
+                <span>{t.description}</span>
+                <span style={{ fontWeight: 500, color: '#4caf50' }}>R$ {t.amount.toFixed(2)}</span>
               </div>
-            ))}
-          </div>
+            ))
+          ) : <p style={{ color: '#606060', fontSize: '13px' }}>Nenhum próximo</p>}
         </div>
-      )}
-
-      {/* Daily Flow Chart */}
-      {summary.dailyFlow && summary.dailyFlow.some(d => d.entrada > 0 || d.saida > 0) && (
-        <div style={{background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginTop: '20px'}}>
-          <h3 style={{color: '#2c3e50', marginBottom: '15px'}}>Fluxo Diário</h3>
-          <div style={{display: 'flex', alignItems: 'flex-end', gap: '2px', height: '150px', padding: '0 5px', overflowX: 'auto'}}>
-            {summary.dailyFlow.map((d, i) => {
-              const maxVal = Math.max(...summary.dailyFlow.map(x => Math.max(x.entrada, x.saida)));
-              const barH = maxVal > 0 ? (Math.max(d.entrada, d.saida) / maxVal * 130) : 0;
-              return (
-                <div key={i} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '12px', flex: 1}} title={`${d.date}: Entradas R$${d.entrada.toFixed(2)} / Saídas R$${d.saida.toFixed(2)}`}>
-                  <div style={{display: 'flex', gap: '1px', alignItems: 'flex-end', height: `${Math.max(barH, 2)}px`}}>
-                    <div style={{width: '5px', background: '#27ae60', borderRadius: '2px 2px 0 0', height: `${maxVal > 0 ? (d.entrada / maxVal * 130) : 0}px`}}></div>
-                    <div style={{width: '5px', background: '#e74c3c', borderRadius: '2px 2px 0 0', height: `${maxVal > 0 ? (d.saida / maxVal * 130) : 0}px`}}></div>
-                  </div>
-                  <span style={{fontSize: '8px', color: '#999', marginTop: '4px'}}>{parseInt(d.date.split('-')[2])}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{display: 'flex', gap: '20px', justifyContent: 'center', marginTop: '10px', fontSize: '12px'}}>
-            <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}><span style={{width: '10px', height: '10px', background: '#27ae60', borderRadius: '2px', display: 'inline-block'}}></span> Entradas</span>
-            <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}><span style={{width: '10px', height: '10px', background: '#e74c3c', borderRadius: '2px', display: 'inline-block'}}></span> Saídas</span>
-          </div>
+        <div style={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 500, color: '#000', margin: '0 0 12px' }}>Despesas Pendentes</h3>
+          <div style={{ fontSize: '24px', fontWeight: 500, color: '#f44336', marginBottom: '16px' }}>R$ {summary.despesasPendentes.toFixed(2)}</div>
+          {upcoming.filter(t => t.type === 'despesa').length > 0 ? (
+            upcoming.filter(t => t.type === 'despesa').slice(0, 5).map(t => (
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee', fontSize: '13px' }}>
+                <span>{t.description}</span>
+                <span style={{ fontWeight: 500, color: '#f44336' }}>R$ {t.amount.toFixed(2)}</span>
+              </div>
+            ))
+          ) : <p style={{ color: '#606060', fontSize: '13px' }}>Nenhum próximo</p>}
         </div>
-      )}
+      </div>
     </div>
   );
 }

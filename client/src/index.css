@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap');
+
 @font-face {
   font-family: 'Coolvetica';
   src: url('./Fonts/Coolvetica Rg.otf') format('opentype');
@@ -5,7 +7,12 @@
   font-style: normal;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@font-face {
+  font-family: 'Coolvetica Book';
+  src: url('./Fonts/Coolvetica-Book-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 * {
   margin: 0;
@@ -14,7 +21,7 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: #f3f4f6;
   color: #1f2937;
   -webkit-font-smoothing: antialiased;
@@ -437,6 +444,27 @@ body {
 
 .btn-cancel:hover {
   background: #e5e7eb;
+}
+
+.btn-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  background: #dcfce7;
+  color: #25D366;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.btn-whatsapp:hover {
+  background: #bbf7d0;
+  color: #1da851;
 }
 
 /* Forms */

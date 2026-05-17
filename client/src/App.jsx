@@ -5,11 +5,13 @@ import Landing from './pages/Landing'
 import Agendamento from './pages/Agendamento'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import PreRegister from './pages/PreRegister'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import Employees from './pages/Employees'
 import Services from './pages/Services'
 import Products from './pages/Products'
+import Plans from './pages/Plans'
 import Appointments from './pages/Appointments'
 import Calendar from './pages/Calendar'
 import FinancialDashboard from './pages/FinancialDashboard'
@@ -18,6 +20,7 @@ import FinancialConfig from './pages/FinancialConfig'
 import Commissions from './pages/Commissions'
 import POS from './pages/POS'
 import CashManagement from './pages/CashManagement'
+import Settings from './pages/Settings'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -30,10 +33,11 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" />} />
+      <Route path="/" element={<Landing />} />
       <Route path="/agendamento" element={<Agendamento />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+      <Route path="/pre-register" element={<PreRegister />} />
       <Route path="/dashboard" element={
         <PrivateRoute>
           <Layout>
@@ -139,6 +143,13 @@ function App() {
           </Layout>
         </PrivateRoute>
       } />
+      <Route path="/planos" element={
+        <PrivateRoute>
+          <Layout>
+            <Plans />
+          </Layout>
+        </PrivateRoute>
+      } />
       <Route path="/appointments" element={
         <PrivateRoute>
           <Layout>
@@ -164,6 +175,13 @@ function App() {
         <PrivateRoute>
           <Layout>
             <CashManagement />
+          </Layout>
+        </PrivateRoute>
+      } />
+      <Route path="/ajustes" element={
+        <PrivateRoute>
+          <Layout>
+            <Settings />
           </Layout>
         </PrivateRoute>
       } />
