@@ -505,6 +505,9 @@ const ANAMNESE_OPTIONS = {
 };
 
 const MULTI_OPTS = {
+  tipo_cabelo: ['Liso', 'Ondulado', 'Cacheado', 'Crespo'],
+  couro_cabeludo: ['Oleoso', 'Seco', 'Normal', 'Misto'],
+  frequencia_lavagem: ['Diária', 'Dia sim, dia não', '2x por semana', '1x por semana'],
   problemas: ['Queda', 'Quebra', 'Caspa', 'Oleosidade excessiva', 'Ressecamento', 'Coceira', 'Dermatite', 'Outro'],
   quimicos: ['Progressiva', 'Botox capilar', 'Selagem', 'Relaxamento', 'Descoloração/Luzes', 'Coloração', 'Alisamento', 'Nenhum', 'Outro'],
   produtos: ['Shampoo', 'Condicionador', 'Máscara de hidratação', 'Óleo capilar', 'Leave-in', 'Protetor térmico', 'Finalizador', 'Nenhum', 'Outro'],
@@ -579,7 +582,7 @@ function AnamneseSection({ client, onUpdate }) {
   const [msg, setMsg] = useState('');
 
   const defaultAnamnese = {
-    tipo_cabelo: '', couro_cabeludo: '', problemas: [], frequencia_lavagem: '',
+    tipo_cabelo: [], couro_cabeludo: [], problemas: [], frequencia_lavagem: [],
     finalizadores: false, finalizadores_quais: '', produtos: [],
     quimicos: [], alergias: [], transplante: false,
     doencas: [], medicamentos: [], gestante: false,
@@ -598,8 +601,14 @@ function AnamneseSection({ client, onUpdate }) {
         for (const k of Object.keys(parsed)) {
           if (k.endsWith('_outro')) { merged[k] = parsed[k]; continue; }
           if (Array.isArray(parsed[k])) { merged[k] = parsed[k]; continue; }
-          if (MULTI_OPTS[k] && typeof parsed[k] === 'string' && parsed[k]) {
-            merged[k] = parsed[k].split(/[,;]\s*/).filter(Boolean);
+          if (typeof parsed[k] === 'string' && parsed[k]) {
+            if (ANAMNESE_OPTIONS[k]?.[parsed[k]]) {
+              merged[k] = [ANAMNESE_OPTIONS[k][parsed[k]]];
+            } else if (MULTI_OPTS[k]) {
+              merged[k] = parsed[k].split(/[,;]\s*/).filter(Boolean);
+            } else {
+              merged[k] = parsed[k];
+            }
           } else {
             merged[k] = parsed[k];
           }
@@ -716,24 +725,15 @@ function AnamneseSection({ client, onUpdate }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={labelStyle}>Tipo de Cabelo</label>
-                <select value={form.tipo_cabelo} onChange={e => handleField('tipo_cabelo', e.target.value)} style={inputStyle}>
-                  <option value="">Selecione</option>
-                  {Object.entries(ANAMNESE_OPTIONS.tipo_cabelo).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
+                <CheckboxGroup field="tipo_cabelo" form={form} onChange={setFormField} />
               </div>
               <div>
                 <label style={labelStyle}>Couro Cabeludo</label>
-                <select value={form.couro_cabeludo} onChange={e => handleField('couro_cabeludo', e.target.value)} style={inputStyle}>
-                  <option value="">Selecione</option>
-                  {Object.entries(ANAMNESE_OPTIONS.couro_cabeludo).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
+                <CheckboxGroup field="couro_cabeludo" form={form} onChange={setFormField} />
               </div>
               <div>
                 <label style={labelStyle}>Frequência de Lavagem</label>
-                <select value={form.frequencia_lavagem} onChange={e => handleField('frequencia_lavagem', e.target.value)} style={inputStyle}>
-                  <option value="">Selecione</option>
-                  {Object.entries(ANAMNESE_OPTIONS.frequencia_lavagem).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
+                <CheckboxGroup field="frequencia_lavagem" form={form} onChange={setFormField} />
               </div>
               <div>
                 <label style={labelStyle}>Problemas Capilares</label>
