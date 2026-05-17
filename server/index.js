@@ -23,11 +23,26 @@ function authMiddleware(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Token não fornecido' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    const db = getDB();
+    const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(decoded.userId);
+    if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
+    req.user = { ...decoded, role: user.role };
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido' });
   }
+}
+
+const ROLE_LEVELS = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+
+function requireLevel(minLevel) {
+  return (req, res, next) => {
+    const userLevel = ROLE_LEVELS[req.user?.role] || 0;
+    if (userLevel < minLevel) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+    next();
+  };
 }
 
 function getToday() { return new Date().toISOString().split('T')[0]; }
@@ -83,7 +98,7 @@ app.post('/api/pre-register', (req, res) => {
 });
 
 // ==================== CLIENTS ====================
-app.get('/api/clients', authMiddleware, (req, res) => {
+app.get('/api/clients', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const { search } = req.query;
   let clients;
@@ -109,7 +124,7 @@ app.get('/api/clients', authMiddleware, (req, res) => {
   res.json(clientsWithDetails);
 });
 
-app.post('/api/clients', authMiddleware, (req, res) => {
+app.post('/api/clients', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { name, gender, birth_date, cpf, rg, phone, landline, email, how_found, holder_type, plan, cep, street, number, complement, neighborhood, city, state, photo, notes, responsible_name, responsible_birth_date, responsible_cpf, responsible_phone, profession, foreigner, app_access_code, anamnese_capilar, services, financial, documents } = req.body;
 
@@ -138,7 +153,7 @@ app.post('/api/clients', authMiddleware, (req, res) => {
   res.json(client);
 });
 
-app.put('/api/clients/:id', authMiddleware, (req, res) => {
+app.put('/api/clients/:id', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const id = parseInt(req.params.id);
   const { name, gender, birth_date, cpf, rg, phone, landline, email, how_found, holder_type, plan, cep, street, number, complement, neighborhood, city, state, photo, notes, responsible_name, responsible_birth_date, responsible_cpf, responsible_phone, profession, foreigner, app_access_code, anamnese_capilar, services } = req.body;
@@ -163,21 +178,21 @@ app.put('/api/clients/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/clients/:id', authMiddleware, (req, res) => {
+app.delete('/api/clients/:id', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM clients WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
 // ==================== PLANS ====================
-app.get('/api/plans', authMiddleware, (req, res) => {
+app.get('/api/plans', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const { active } = req.query;
   if (active === '1') res.json(db.prepare('SELECT * FROM plans WHERE active = 1 ORDER BY name').all());
   else res.json(db.prepare('SELECT * FROM plans ORDER BY name').all());
 });
 
-app.post('/api/plans', authMiddleware, (req, res) => {
+app.post('/api/plans', authMiddleware, requireLevel(4), (req, res) => {
   const db = getDB();
   const { name, description, price, benefits } = req.body;
   if (!name) return res.status(400).json({ error: 'Nome do plano é obrigatório' });
@@ -186,21 +201,21 @@ app.post('/api/plans', authMiddleware, (req, res) => {
   res.json(plan);
 });
 
-app.put('/api/plans/:id', authMiddleware, (req, res) => {
+app.put('/api/plans/:id', authMiddleware, requireLevel(4), (req, res) => {
   const db = getDB();
   const { name, description, price, benefits, active } = req.body;
   db.prepare('UPDATE plans SET name=?, description=?, price=?, benefits=?, active=? WHERE id=?').run(name, description || '', price || 0, benefits || '', active !== undefined ? active : 1, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.delete('/api/plans/:id', authMiddleware, (req, res) => {
+app.delete('/api/plans/:id', authMiddleware, requireLevel(4), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM plans WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
 // ==================== EMPLOYEES ====================
-app.get('/api/employees', authMiddleware, (req, res) => {
+app.get('/api/employees', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const { active } = req.query;
   let employees;
@@ -212,7 +227,7 @@ app.get('/api/employees', authMiddleware, (req, res) => {
   res.json(employees);
 });
 
-app.post('/api/employees', authMiddleware, (req, res) => {
+app.post('/api/employees', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, phone, email, specialty, commission_rate, active } = req.body;
   const result = db.prepare('INSERT INTO employees (name, phone, email, specialty, commission_rate, active) VALUES (?, ?, ?, ?, ?, ?)').run(name, phone || '', email || '', specialty || '', commission_rate || 0, active !== undefined ? active : 1);
@@ -220,21 +235,21 @@ app.post('/api/employees', authMiddleware, (req, res) => {
   res.json(emp);
 });
 
-app.put('/api/employees/:id', authMiddleware, (req, res) => {
+app.put('/api/employees/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, phone, email, specialty, commission_rate, active } = req.body;
   db.prepare('UPDATE employees SET name=?, phone=?, email=?, specialty=?, commission_rate=?, active=? WHERE id=?').run(name, phone || '', email || '', specialty || '', commission_rate || 0, active, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.delete('/api/employees/:id', authMiddleware, (req, res) => {
+app.delete('/api/employees/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM employees WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
 // ==================== SERVICES ====================
-app.get('/api/services', authMiddleware, (req, res) => {
+app.get('/api/services', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const { active } = req.query;
   let services;
@@ -246,7 +261,7 @@ app.get('/api/services', authMiddleware, (req, res) => {
   res.json(services);
 });
 
-app.post('/api/services', authMiddleware, (req, res) => {
+app.post('/api/services', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, description, price, duration_minutes, active } = req.body;
   const result = db.prepare('INSERT INTO services (name, description, price, duration_minutes, active) VALUES (?, ?, ?, ?, ?)').run(name, description || '', parseFloat(price), parseInt(duration_minutes) || 30, active !== undefined ? active : 1);
@@ -254,21 +269,21 @@ app.post('/api/services', authMiddleware, (req, res) => {
   res.json(svc);
 });
 
-app.put('/api/services/:id', authMiddleware, (req, res) => {
+app.put('/api/services/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, description, price, duration_minutes, active } = req.body;
   db.prepare('UPDATE services SET name=?, description=?, price=?, duration_minutes=?, active=? WHERE id=?').run(name, description || '', parseFloat(price), parseInt(duration_minutes) || 30, active, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.delete('/api/services/:id', authMiddleware, (req, res) => {
+app.delete('/api/services/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM services WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
 // ==================== PRODUCTS ====================
-app.get('/api/products', authMiddleware, (req, res) => {
+app.get('/api/products', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const { search, group, active, low_stock } = req.query;
   let query = 'SELECT * FROM products WHERE 1=1';
@@ -294,18 +309,18 @@ app.get('/api/products', authMiddleware, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-app.get('/api/products/groups', authMiddleware, (req, res) => {
+app.get('/api/products/groups', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const groups = db.prepare("SELECT DISTINCT product_group FROM products WHERE product_group != '' ORDER BY product_group").all().map(g => g.product_group);
   res.json(groups);
 });
 
-app.get('/api/products/low-stock', authMiddleware, (req, res) => {
+app.get('/api/products/low-stock', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   res.json(db.prepare('SELECT * FROM products WHERE stock <= min_stock AND active = 1').all());
 });
 
-app.post('/api/products', authMiddleware, (req, res) => {
+app.post('/api/products', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, description, group, type, cost, sale_price, unit, stock, min_stock, photo, active } = req.body;
   const count = db.prepare('SELECT COUNT(*) as count FROM products').get();
@@ -318,7 +333,7 @@ app.post('/api/products', authMiddleware, (req, res) => {
   res.json(product);
 });
 
-app.put('/api/products/:id', authMiddleware, (req, res) => {
+app.put('/api/products/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, description, group, type, cost, sale_price, unit, min_stock, photo, active } = req.body;
   db.prepare('UPDATE products SET name=?, description=?, product_group=?, type=?, cost=?, sale_price=?, unit=?, min_stock=?, photo=?, active=? WHERE id=?').run(
@@ -327,13 +342,13 @@ app.put('/api/products/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/products/:id', authMiddleware, (req, res) => {
+app.delete('/api/products/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM products WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.patch('/api/products/:id/stock', authMiddleware, (req, res) => {
+app.patch('/api/products/:id/stock', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { type, quantity, reason, user } = req.body;
   const productId = parseInt(req.params.id);
@@ -357,7 +372,7 @@ app.patch('/api/products/:id/stock', authMiddleware, (req, res) => {
   res.json({ success: true, newStock });
 });
 
-app.get('/api/products/:id/stock-movements', authMiddleware, (req, res) => {
+app.get('/api/products/:id/stock-movements', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   res.json(db.prepare('SELECT * FROM stock_movements WHERE product_id = ? ORDER BY date DESC').all(parseInt(req.params.id)));
 });
@@ -383,7 +398,7 @@ app.get('/api/appointments', authMiddleware, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-app.post('/api/appointments', authMiddleware, (req, res) => {
+app.post('/api/appointments', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { client_id, employee_id, service_id, date, time, notes } = req.body;
   const service = db.prepare('SELECT * FROM services WHERE id = ?').get(parseInt(service_id));
@@ -430,7 +445,7 @@ app.post('/api/public/appointments', (req, res) => {
   res.json({ success: true, id: aptResult.lastInsertRowid });
 });
 
-app.put('/api/appointments/:id', authMiddleware, (req, res) => {
+app.put('/api/appointments/:id', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const existing = db.prepare('SELECT * FROM appointments WHERE id = ?').get(parseInt(req.params.id));
   if (!existing) return res.status(404).json({ error: 'Agendamento não encontrado' });
@@ -451,14 +466,14 @@ app.put('/api/appointments/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/appointments/:id', authMiddleware, (req, res) => {
+app.delete('/api/appointments/:id', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM appointments WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
 // ==================== DASHBOARD ====================
-app.get('/api/dashboard/overview', authMiddleware, (req, res) => {
+app.get('/api/dashboard/overview', authMiddleware, requireLevel(1), (req, res) => {
   const db = getDB();
   const today = getToday();
   const month = getMonth();
@@ -495,7 +510,7 @@ app.get('/api/dashboard/overview', authMiddleware, (req, res) => {
 });
 
 // ==================== FINANCIAL ====================
-app.get('/api/financial/transactions', authMiddleware, (req, res) => {
+app.get('/api/financial/transactions', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { type, category_id, account_id, status, payment_method_id, date_from, date_to, search } = req.query;
 
@@ -524,20 +539,20 @@ app.get('/api/financial/transactions', authMiddleware, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-app.get('/api/financial/transactions/overdue', authMiddleware, (req, res) => {
+app.get('/api/financial/transactions/overdue', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const today = getToday();
   res.json(db.prepare(`SELECT ft.*, fc.name as category_name FROM financial_transactions ft LEFT JOIN financial_categories fc ON ft.category_id = fc.id WHERE ft.due_date < ? AND ft.status = 'pendente'`).all(today));
 });
 
-app.get('/api/financial/transactions/upcoming', authMiddleware, (req, res) => {
+app.get('/api/financial/transactions/upcoming', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const today = getToday();
   const future = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
   res.json(db.prepare(`SELECT ft.*, fc.name as category_name FROM financial_transactions ft LEFT JOIN financial_categories fc ON ft.category_id = fc.id WHERE ft.due_date >= ? AND ft.due_date <= ? AND ft.status = 'pendente'`).all(today, future));
 });
 
-app.post('/api/financial/transactions', authMiddleware, (req, res) => {
+app.post('/api/financial/transactions', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { type, category_id, account_id, payment_method_id, client_id, appointment_id, description, amount, installments, due_date, status, notes } = req.body;
   const count = db.prepare('SELECT COUNT(*) as count FROM financial_transactions').get();
@@ -550,7 +565,7 @@ app.post('/api/financial/transactions', authMiddleware, (req, res) => {
   res.json(transaction);
 });
 
-app.put('/api/financial/transactions/:id', authMiddleware, (req, res) => {
+app.put('/api/financial/transactions/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const existing = db.prepare('SELECT * FROM financial_transactions WHERE id = ?').get(parseInt(req.params.id));
   if (!existing) return res.status(404).json({ error: 'Transação não encontrada' });
@@ -575,20 +590,20 @@ app.put('/api/financial/transactions/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/financial/transactions/:id', authMiddleware, (req, res) => {
+app.delete('/api/financial/transactions/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM financial_transactions WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.patch('/api/financial/transactions/:id/status', authMiddleware, (req, res) => {
+app.patch('/api/financial/transactions/:id/status', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { status } = req.body;
   db.prepare('UPDATE financial_transactions SET status = ?, paid_date = ? WHERE id = ?').run(status, status === 'pago' ? getToday() : null, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.get('/api/financial/categories', authMiddleware, (req, res) => {
+app.get('/api/financial/categories', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { type } = req.query;
   let categories;
@@ -600,7 +615,7 @@ app.get('/api/financial/categories', authMiddleware, (req, res) => {
   res.json(categories);
 });
 
-app.post('/api/financial/categories', authMiddleware, (req, res) => {
+app.post('/api/financial/categories', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, type, icon, color, active } = req.body;
   const result = db.prepare('INSERT INTO financial_categories (name, type, icon, color, active) VALUES (?, ?, ?, ?, ?)').run(name, type || 'despesa', icon || '', color || '#999', active !== undefined ? active : 1);
@@ -608,20 +623,20 @@ app.post('/api/financial/categories', authMiddleware, (req, res) => {
   res.json(category);
 });
 
-app.put('/api/financial/categories/:id', authMiddleware, (req, res) => {
+app.put('/api/financial/categories/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, type, icon, color, active } = req.body;
   db.prepare('UPDATE financial_categories SET name=?, type=?, icon=?, color=?, active=? WHERE id=?').run(name, type, icon, color, active, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.delete('/api/financial/categories/:id', authMiddleware, (req, res) => {
+app.delete('/api/financial/categories/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM financial_categories WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.get('/api/financial/accounts', authMiddleware, (req, res) => {
+app.get('/api/financial/accounts', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { active } = req.query;
   let accounts;
@@ -633,7 +648,7 @@ app.get('/api/financial/accounts', authMiddleware, (req, res) => {
   res.json(accounts);
 });
 
-app.post('/api/financial/accounts', authMiddleware, (req, res) => {
+app.post('/api/financial/accounts', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, type, balance, active } = req.body;
   const result = db.prepare('INSERT INTO financial_accounts (name, type, balance, active) VALUES (?, ?, ?, ?)').run(name, type || 'dinheiro', parseFloat(balance) || 0, active !== undefined ? active : 1);
@@ -641,25 +656,25 @@ app.post('/api/financial/accounts', authMiddleware, (req, res) => {
   res.json(account);
 });
 
-app.put('/api/financial/accounts/:id', authMiddleware, (req, res) => {
+app.put('/api/financial/accounts/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, type, balance, active } = req.body;
   db.prepare('UPDATE financial_accounts SET name=?, type=?, balance=?, active=? WHERE id=?').run(name, type, parseFloat(balance), active, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.delete('/api/financial/accounts/:id', authMiddleware, (req, res) => {
+app.delete('/api/financial/accounts/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM financial_accounts WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.get('/api/financial/payment-methods', authMiddleware, (req, res) => {
+app.get('/api/financial/payment-methods', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   res.json(db.prepare('SELECT * FROM payment_methods WHERE active = 1 ORDER BY name').all());
 });
 
-app.post('/api/financial/payment-methods', authMiddleware, (req, res) => {
+app.post('/api/financial/payment-methods', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, type, icon, max_installments, active } = req.body;
   const result = db.prepare('INSERT INTO payment_methods (name, type, icon, max_installments, active) VALUES (?, ?, ?, ?, ?)').run(name, type, icon || '', max_installments || 1, active !== undefined ? active : 1);
@@ -667,20 +682,20 @@ app.post('/api/financial/payment-methods', authMiddleware, (req, res) => {
   res.json(pm);
 });
 
-app.put('/api/financial/payment-methods/:id', authMiddleware, (req, res) => {
+app.put('/api/financial/payment-methods/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { name, type, icon, max_installments, active } = req.body;
   db.prepare('UPDATE payment_methods SET name=?, type=?, icon=?, max_installments=?, active=? WHERE id=?').run(name, type, icon, max_installments || 1, active, parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.delete('/api/financial/payment-methods/:id', authMiddleware, (req, res) => {
+app.delete('/api/financial/payment-methods/:id', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM payment_methods WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
 });
 
-app.get('/api/financial/summary', authMiddleware, (req, res) => {
+app.get('/api/financial/summary', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { month } = req.query;
   const targetMonth = month || getMonth();
@@ -716,7 +731,7 @@ app.get('/api/financial/summary', authMiddleware, (req, res) => {
   res.json({ totalReceitas, totalDespesas, receitasPagas, despesasPagas, receitasPendentes, despesasPendentes, saldo, totalAccounts, overdueCount, byCategory, dailyFlow, month: targetMonth });
 });
 
-app.get('/api/financial/accounts-summary', authMiddleware, (req, res) => {
+app.get('/api/financial/accounts-summary', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const accounts = db.prepare('SELECT id, name, type, balance FROM financial_accounts WHERE active = 1').all();
   const total = accounts.reduce((s, a) => s + a.balance, 0);
@@ -724,7 +739,7 @@ app.get('/api/financial/accounts-summary', authMiddleware, (req, res) => {
 });
 
 // ==================== COMMISSIONS ====================
-app.post('/api/commissions/sync', authMiddleware, (req, res) => {
+app.post('/api/commissions/sync', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   let created = 0;
 
@@ -749,7 +764,7 @@ app.post('/api/commissions/sync', authMiddleware, (req, res) => {
   res.json({ success: true, created });
 });
 
-app.get('/api/commissions', authMiddleware, (req, res) => {
+app.get('/api/commissions', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { employee_id, month, status } = req.query;
   let query = 'SELECT * FROM commissions WHERE 1=1';
@@ -761,7 +776,7 @@ app.get('/api/commissions', authMiddleware, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-app.get('/api/commissions/summary', authMiddleware, (req, res) => {
+app.get('/api/commissions/summary', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { month } = req.query;
   const targetMonth = month || getMonth();
@@ -779,7 +794,7 @@ app.get('/api/commissions/summary', authMiddleware, (req, res) => {
   res.json(summary);
 });
 
-app.post('/api/commissions/:employee_id/pay', authMiddleware, (req, res) => {
+app.post('/api/commissions/:employee_id/pay', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { employee_id } = req.params;
   const { month } = req.body;
@@ -789,7 +804,7 @@ app.post('/api/commissions/:employee_id/pay', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/commissions/:id/status', authMiddleware, (req, res) => {
+app.post('/api/commissions/:id/status', authMiddleware, requireLevel(3), (req, res) => {
   const db = getDB();
   const { status } = req.body;
   db.prepare('UPDATE commissions SET status = ? WHERE id = ?').run(status, parseInt(req.params.id));
@@ -797,7 +812,7 @@ app.post('/api/commissions/:id/status', authMiddleware, (req, res) => {
 });
 
 // ==================== CASH / POS ====================
-app.get('/api/cash/current', authMiddleware, (req, res) => {
+app.get('/api/cash/current', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const openRegister = db.prepare("SELECT * FROM cash_registers WHERE status = 'aberto'").get();
   if (openRegister) {
@@ -812,7 +827,7 @@ app.get('/api/cash/current', authMiddleware, (req, res) => {
   }
 });
 
-app.post('/api/cash/open', authMiddleware, (req, res) => {
+app.post('/api/cash/open', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const openRegister = db.prepare("SELECT * FROM cash_registers WHERE status = 'aberto'").get();
   if (openRegister) return res.status(400).json({ error: 'Já existe um caixa aberto' });
@@ -825,7 +840,7 @@ app.post('/api/cash/open', authMiddleware, (req, res) => {
   res.json({ success: true, register });
 });
 
-app.post('/api/cash/close', authMiddleware, (req, res) => {
+app.post('/api/cash/close', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const openRegister = db.prepare("SELECT * FROM cash_registers WHERE status = 'aberto'").get();
   if (!openRegister) return res.status(400).json({ error: 'Nenhum caixa aberto' });
@@ -845,7 +860,7 @@ app.post('/api/cash/close', authMiddleware, (req, res) => {
   res.json({ success: true, register, expected, difference: register.final_amount - expected });
 });
 
-app.post('/api/cash/transactions', authMiddleware, (req, res) => {
+app.post('/api/cash/transactions', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const openRegister = db.prepare("SELECT * FROM cash_registers WHERE status = 'aberto'").get();
   if (!openRegister) return res.status(400).json({ error: 'Nenhum caixa aberto. Abra um caixa primeiro.' });
@@ -883,7 +898,7 @@ app.post('/api/cash/transactions', authMiddleware, (req, res) => {
   res.json(transaction);
 });
 
-app.get('/api/cash/history', authMiddleware, (req, res) => {
+app.get('/api/cash/history', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { date, register_id, status } = req.query;
   let query = 'SELECT * FROM cash_registers WHERE 1=1';
@@ -894,7 +909,7 @@ app.get('/api/cash/history', authMiddleware, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-app.get('/api/cash/registers/:id/summary', authMiddleware, (req, res) => {
+app.get('/api/cash/registers/:id/summary', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const register = db.prepare('SELECT * FROM cash_registers WHERE id = ?').get(parseInt(req.params.id));
   if (!register) return res.status(404).json({ error: 'Caixa não encontrado' });
@@ -927,7 +942,7 @@ app.get('/api/salon/professionals', (req, res) => {
   res.json(db.prepare('SELECT * FROM salon_professionals').all());
 });
 
-app.get('/api/salon/bookings', authMiddleware, (req, res) => {
+app.get('/api/salon/bookings', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   res.json(db.prepare('SELECT * FROM salon_bookings ORDER BY date DESC, time DESC').all());
 });
@@ -940,7 +955,7 @@ app.post('/api/salon/bookings', (req, res) => {
   res.json(booking);
 });
 
-app.patch('/api/salon/bookings/:id', authMiddleware, (req, res) => {
+app.patch('/api/salon/bookings/:id', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   const { status } = req.body;
   db.prepare('UPDATE salon_bookings SET status = ? WHERE id = ?').run(status, parseInt(req.params.id));
@@ -948,7 +963,7 @@ app.patch('/api/salon/bookings/:id', authMiddleware, (req, res) => {
   res.json(booking || null);
 });
 
-app.delete('/api/salon/bookings/:id', authMiddleware, (req, res) => {
+app.delete('/api/salon/bookings/:id', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
   db.prepare('DELETE FROM salon_bookings WHERE id = ?').run(parseInt(req.params.id));
   res.json({ success: true });
@@ -1005,7 +1020,7 @@ app.delete('/api/users/:id', authMiddleware, adminMiddleware, (req, res) => {
 });
 
 // ==================== SETTINGS ====================
-app.get('/api/settings', authMiddleware, (req, res) => {
+app.get('/api/settings', authMiddleware, requireLevel(4), (req, res) => {
   const db = getDB();
   const settings = db.prepare('SELECT * FROM settings').all();
   const settingsObj = {};
@@ -1013,7 +1028,7 @@ app.get('/api/settings', authMiddleware, (req, res) => {
   res.json(settingsObj);
 });
 
-app.put('/api/settings/:key', authMiddleware, (req, res) => {
+app.put('/api/settings/:key', authMiddleware, requireLevel(4), (req, res) => {
   const db = getDB();
   const { value } = req.body;
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(req.params.key, value);

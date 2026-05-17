@@ -35,6 +35,11 @@ export default function Layout({ children }) {
 
   const isActive = (path) => location.pathname === path;
 
+  const canSee = (item) => {
+    if (item.path === '/ajustes') return user?.role === 'admin';
+    return true;
+  };
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
       <aside style={{
@@ -53,7 +58,7 @@ export default function Layout({ children }) {
         </div>
 
         <nav style={{ flex: 1, padding: '8px 0', overflowY: 'auto' }}>
-          {menuItems.map((item) => {
+          {menuItems.filter(canSee).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
