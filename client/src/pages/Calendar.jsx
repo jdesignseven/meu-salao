@@ -722,25 +722,25 @@ function AnamneseSection({ client, onUpdate }) {
               <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>Nenhum dado de anamnese preenchido.</p>
             )
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div style={{ gridColumn: 'span 2' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
                 <label style={labelStyle}>Tipo de Cabelo</label>
                 <CheckboxGroup field="tipo_cabelo" form={form} onChange={setFormField} />
               </div>
-              <div style={{ gridColumn: 'span 2' }}>
+              <div>
                 <label style={labelStyle}>Couro Cabeludo</label>
                 <CheckboxGroup field="couro_cabeludo" form={form} onChange={setFormField} />
               </div>
-              <div style={{ gridColumn: 'span 2' }}>
+              <div>
                 <label style={labelStyle}>Frequência de Lavagem</label>
                 <CheckboxGroup field="frequencia_lavagem" form={form} onChange={setFormField} />
               </div>
-              <div style={{ gridColumn: 'span 2' }}>
+              <div>
                 <label style={labelStyle}>Problemas Capilares</label>
                 <CheckboxGroup field="problemas" form={form} onChange={setFormField} />
               </div>
 
-              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '6px' }}>
                 <label style={labelStyle}>Usa Finalizadores?</label>
                 <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
@@ -753,28 +753,25 @@ function AnamneseSection({ client, onUpdate }) {
               </div>
               {form.finalizadores && (
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={labelStyle}>Quais Finalizadores?</label>
-                  <input type="text" value={form.finalizadores_quais} onChange={e => handleField('finalizadores_quais', e.target.value)} style={inputStyle} />
+                  <input type="text" value={form.finalizadores_quais} onChange={e => handleField('finalizadores_quais', e.target.value)} placeholder="Quais?" style={inputStyle} />
                 </div>
               )}
 
-              <div style={{ gridColumn: 'span 2' }}>
+              <div>
                 <label style={labelStyle}>Produtos Utilizados</label>
                 <CheckboxGroup field="produtos" form={form} onChange={setFormField} />
               </div>
-
-              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+              <div>
                 <label style={labelStyle}>Químicos / Procedimentos</label>
                 <CheckboxGroup field="quimicos" form={form} onChange={setFormField} />
               </div>
-              <div style={{ gridColumn: 'span 2' }}>
+              <div>
                 <label style={labelStyle}>Alergias</label>
                 <CheckboxGroup field="alergias" form={form} onChange={setFormField} />
               </div>
-
               <div>
-                <label style={labelStyle}>Já fez Transplante Capilar?</label>
-                <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                <label style={labelStyle}>Transplante Capilar?</label>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                     <input type="radio" checked={form.transplante === true} onChange={() => handleField('transplante', true)} /> Sim
                   </label>
@@ -784,8 +781,16 @@ function AnamneseSection({ client, onUpdate }) {
                 </div>
               </div>
               <div>
+                <label style={labelStyle}>Doenças</label>
+                <CheckboxGroup field="doencas" form={form} onChange={setFormField} />
+              </div>
+              <div>
+                <label style={labelStyle}>Medicamentos</label>
+                <CheckboxGroup field="medicamentos" form={form} onChange={setFormField} />
+              </div>
+              <div>
                 <label style={labelStyle}>Gestante?</label>
-                <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                     <input type="radio" checked={form.gestante === true} onChange={() => handleField('gestante', true)} /> Sim
                   </label>
@@ -794,26 +799,16 @@ function AnamneseSection({ client, onUpdate }) {
                   </label>
                 </div>
               </div>
-
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={labelStyle}>Doenças</label>
-                <CheckboxGroup field="doencas" form={form} onChange={setFormField} />
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={labelStyle}>Medicamentos</label>
-                <CheckboxGroup field="medicamentos" form={form} onChange={setFormField} />
-              </div>
-
-              <div style={{ gridColumn: 'span 2', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+              <div>
                 <label style={labelStyle}>Objetivos</label>
                 <CheckboxGroup field="objetivos" form={form} onChange={setFormField} />
               </div>
-              <div style={{ gridColumn: 'span 2' }}>
+              <div>
                 <label style={labelStyle}>Observações</label>
                 <textarea rows={2} value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)} style={inputStyle} />
               </div>
 
-              <div style={{ gridColumn: 'span 2', display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <div style={{ gridColumn: 'span 2', display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
                 <button onClick={() => { setEditing(false); setMsg(''); }} style={{ padding: '8px 16px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
                 <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? 'Salvando...' : 'Salvar Anamnese'}</button>
               </div>
