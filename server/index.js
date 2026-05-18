@@ -577,6 +577,23 @@ app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => 
     ORDER BY month
   `).all();
 
+  const clientsAgeGender = db.prepare(`
+    SELECT
+      CASE
+        WHEN birth_date = '' OR birth_date IS NULL THEN 'Não informado'
+        WHEN CAST(strftime('%Y', 'now') - substr(birth_date, 1, 4) AS INTEGER) <= 18 THEN '0-18'
+        WHEN CAST(strftime('%Y', 'now') - substr(birth_date, 1, 4) AS INTEGER) <= 25 THEN '19-25'
+        WHEN CAST(strftime('%Y', 'now') - substr(birth_date, 1, 4) AS INTEGER) <= 35 THEN '26-35'
+        WHEN CAST(strftime('%Y', 'now') - substr(birth_date, 1, 4) AS INTEGER) <= 50 THEN '36-50'
+        ELSE '51+'
+      END as faixa,
+      CASE WHEN gender = 'F' OR gender = 'Feminino' THEN 'Feminino' WHEN gender = 'M' OR gender = 'Masculino' THEN 'Masculino' ELSE 'Outro' END as sexo,
+      COUNT(*) as count
+    FROM clients
+    GROUP BY faixa, sexo
+    ORDER BY faixa
+  `).all();
+
   const today = getToday();
   const todaySchedule = db.prepare(`
     SELECT a.*, c.name as client_name, e.name as employee_name, s.name as service_name,
@@ -597,6 +614,7 @@ app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => 
     completedAppointments,
     cancelAbsence12m,
     atendimentos12m,
+    clientsAgeGender,
     todaySchedule
   });
 });

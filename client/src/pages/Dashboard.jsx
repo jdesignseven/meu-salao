@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Users, Calendar, XCircle, Clock, TrendingUp, UserPlus, CheckCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const API_URL = '/api';
 
@@ -156,22 +156,39 @@ export default function Dashboard() {
           <Period>{periodLabel(6)}</Period>
         </ChartCard>
 
-        {/* Ausentes e Cancelamentos — 12 meses */}
-        <ChartCard title="Ausentes e Cancelamentos — Últimos 12 Meses">
-          {charts.cancelAbsence12m.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={charts.cancelAbsence12m} margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={formatMonth} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip labelFormatter={formatMonth} contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Line type="monotone" dataKey="cancelados" stroke="#ef4444" strokeWidth={2} name="Cancelados" dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="ausentes" stroke="#f97316" strokeWidth={2} name="Ausentes" dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : <EmptyData />}
-          <Period>{periodLabel(12)}</Period>
+        {/* Clientes por Idade e Sexo */}
+        <ChartCard title="Clientes por Idade e Sexo">
+          {charts.clientsAgeGender?.length > 0 ? (() => {
+            const faixas = [...new Set(charts.clientsAgeGender.map(d => d.faixa))];
+            const order = ['0-18','19-25','26-35','36-50','51+','Não informado'];
+            faixas.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+            const data = faixas.map(f => {
+              const row = { faixa: f };
+              const items = charts.clientsAgeGender.filter(d => d.faixa === f);
+              const fem = items.find(d => d.sexo === 'Feminino');
+              const masc = items.find(d => d.sexo === 'Masculino');
+              const outro = items.find(d => d.sexo === 'Outro');
+              row.Feminino = fem ? fem.count : 0;
+              row.Masculino = masc ? masc.count : 0;
+              row.Outro = outro ? outro.count : 0;
+              return row;
+            });
+            return (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={data} margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="faixa" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="Feminino" fill="#e91e63" radius={[3, 3, 0, 0]} name="Feminino" maxBarSize={24} />
+                  <Bar dataKey="Masculino" fill="#002cd6" radius={[3, 3, 0, 0]} name="Masculino" maxBarSize={24} />
+                  <Bar dataKey="Outro" fill="#9e9e9e" radius={[3, 3, 0, 0]} name="Outro" maxBarSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          })() : <EmptyData />}
+          <Period>Total: {stats.totalClients} clientes</Period>
         </ChartCard>
       </div>
 
