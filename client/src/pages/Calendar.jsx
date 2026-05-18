@@ -319,7 +319,7 @@ export default function Calendar() {
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', fontSize: '14px', color: '#606060', marginBottom: '8px' }}>Alterar Status:</label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['agendado', 'confirmado', 'aguardando', 'atendendo', 'atendido', 'concluido', 'cancelado'].map((status) => (
+                {['agendado', 'confirmado', 'aguardando', 'atendendo', 'atendido', 'concluido', 'cancelado', 'faltou'].map((status) => (
                   <button key={status} type="button"
                     onClick={() => handleStatusChange(selectedAppointment.id, status)}
                     style={{
@@ -332,7 +332,7 @@ export default function Calendar() {
                       fontSize: '12px',
                       fontWeight: 500
                     }}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status === 'faltou' ? 'Ausente' : status.charAt(0).toUpperCase() + status.slice(1)}
                   </button>
                 ))}
               </div>
@@ -446,6 +446,7 @@ export default function Calendar() {
                   <option value="atendido">Atendido</option>
                   <option value="concluido">Concluído</option>
                   <option value="cancelado">Cancelado</option>
+                  <option value="faltou">Ausente</option>
                 </select>
             </div>
 
