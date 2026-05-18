@@ -10,7 +10,7 @@ import {
 const ROLE_LEVELS = { admin: 4, manager: 3, operator: 2, viewer: 1 };
 
 const menuItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, minLevel: 1 },
+  { path: '/dashboard', label: 'Inteligência', icon: LayoutDashboard, minLevel: 1 },
   { path: '/agenda', label: 'Agenda', icon: Calendar, minLevel: 1 },
   { path: '/clients', label: 'Clientes', icon: Users, minLevel: 2 },
   { path: '/employees', label: 'Profissionais', icon: UserCircle2, minLevel: 3 },
