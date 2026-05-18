@@ -94,13 +94,13 @@ export default function Dashboard() {
         {/* Principais Planos - 6 meses */}
         <ChartCard title="Principais Planos — Últimos 6 Meses">
           {charts.topPlans6m.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={charts.topPlans6m} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={charts.topPlans6m} margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(value) => [value, 'Agendamentos']} contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#002cd6" radius={[0, 4, 4, 0]} name="Agendamentos" />
+                <Bar dataKey="count" fill="#002cd6" radius={[4, 4, 0, 0]} name="Agendamentos" />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
@@ -126,13 +126,13 @@ export default function Dashboard() {
         {/* Planos Atendidos — 6 meses */}
         <ChartCard title="Planos Atendidos — Últimos 6 Meses">
           {charts.plansAttended6m.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={charts.plansAttended6m} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={charts.plansAttended6m} margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(value) => [value, 'Atendimentos']} contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#16a34a" radius={[0, 4, 4, 0]} name="Atendimentos" />
+                <Bar dataKey="count" fill="#16a34a" radius={[4, 4, 0, 0]} name="Atendimentos" />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
