@@ -100,7 +100,7 @@ export default function Dashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(value) => [value, 'Agendamentos']} contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#002cd6" radius={[4, 4, 0, 0]} name="Agendamentos" />
+                <Bar dataKey="count" fill="#002cd6" radius={[4, 4, 0, 0]} name="Agendamentos" maxBarSize={30} />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
@@ -116,8 +116,8 @@ export default function Dashboard() {
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="cancelados" fill="#ef4444" radius={[3, 3, 0, 0]} name="Cancelados" />
-                <Bar dataKey="ausentes" fill="#f97316" radius={[3, 3, 0, 0]} name="Ausentes" />
+                <Bar dataKey="cancelados" fill="#ef4444" radius={[3, 3, 0, 0]} name="Cancelados" maxBarSize={20} />
+                <Bar dataKey="ausentes" fill="#f97316" radius={[3, 3, 0, 0]} name="Ausentes" maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
@@ -132,7 +132,7 @@ export default function Dashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(value) => [value, 'Atendimentos']} contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#16a34a" radius={[4, 4, 0, 0]} name="Atendimentos" />
+                <Bar dataKey="count" fill="#16a34a" radius={[4, 4, 0, 0]} name="Atendimentos" maxBarSize={30} />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
