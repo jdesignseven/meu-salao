@@ -158,13 +158,21 @@ export default function Calendar() {
   };
 
   const handleStatusChange = async (id, status) => {
+    let reason = '';
+    const label = status === 'cancelado' ? 'Cancelamento' : status === 'faltou' ? 'Ausência' : '';
+    if (status === 'cancelado' || status === 'faltou') {
+      reason = window.prompt(`Motivo do ${label}:`);
+      if (reason === null) return;
+    }
     try {
       const headers = getAuthHeader();
       headers['Content-Type'] = 'application/json';
+      const body = { status };
+      if (reason) body.notes = (selectedAppointment.notes ? selectedAppointment.notes + '\n' : '') + `${label}: ${reason}`;
       const res = await fetch(`${API_URL}/appointments/${id}`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ status })
+        body: JSON.stringify(body)
       });
       if (res.ok) {
         fetchData();
