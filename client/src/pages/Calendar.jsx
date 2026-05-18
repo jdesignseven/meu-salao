@@ -289,6 +289,7 @@ export default function Calendar() {
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           allDaySlot={false}
+          nowIndicator={true}
           height="auto"
           buttonText={{ today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia', list: 'Lista' }}
         />
