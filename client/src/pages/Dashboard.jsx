@@ -156,36 +156,21 @@ export default function Dashboard() {
         </ChartCard>
       </div>
 
-      {/* Agenda de Hoje */}
-      <ChartCard title={`Agenda de Hoje (${new Date().toLocaleDateString('pt-BR')})`} fullWidth>
-        {charts.todaySchedule.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {charts.todaySchedule.map((a) => {
-              const statusColors = {
-                agendado: '#002cd6', confirmado: '#00bcd4', aguardando: '#ff9800',
-                atendendo: '#e91e63', atendido: '#4caf50', concluido: '#1b5e20',
-                cancelado: '#9e9e9e', faltou: '#607d8b'
-              };
-              return (
-                <div key={a.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '8px 12px', background: '#f9f9f9', borderRadius: '4px', fontSize: '13px'
-                }}>
-                  <span style={{ fontWeight: 600, color: '#333', minWidth: '50px' }}>{a.time?.substring(0, 5)}</span>
-                  <span style={{ flex: 1, color: '#000' }}>{a.client_name}</span>
-                  <span style={{ color: '#666', flex: 1 }}>{a.service_name}</span>
-                  <span style={{ color: '#666', flex: 1 }}>{a.employee_name}</span>
-                  {a.client_plan && <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '10px', fontSize: '11px' }}>{a.client_plan}</span>}
-                  <span style={{
-                    padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
-                    background: statusColors[a.status] || '#999', color: '#fff', fontWeight: 500
-                  }}>
-                    {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+      {/* Atendimentos Finalizados, Ausências e Cancelamentos — 12 meses */}
+      <ChartCard title="Atendimentos Finalizados, Ausências e Cancelamentos — Últimos 12 Meses" fullWidth>
+        {charts.atendimentos12m?.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={charts.atendimentos12m} margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={formatMonth} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip labelFormatter={formatMonth} contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Bar dataKey="finalizados" fill="#16a34a" radius={[3, 3, 0, 0]} name="Finalizados" maxBarSize={24} />
+              <Bar dataKey="cancelados" fill="#ef4444" radius={[3, 3, 0, 0]} name="Cancelados" maxBarSize={24} />
+              <Bar dataKey="ausentes" fill="#f97316" radius={[3, 3, 0, 0]} name="Ausentes" maxBarSize={24} />
+            </BarChart>
+          </ResponsiveContainer>
         ) : <EmptyData />}
       </ChartCard>
     </div>

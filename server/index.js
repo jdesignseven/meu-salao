@@ -566,6 +566,17 @@ app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => 
     ORDER BY month
   `).all();
 
+  const atendimentos12m = db.prepare(`
+    SELECT substr(date, 1, 7) as month,
+      SUM(CASE WHEN status = 'atendido' OR status = 'concluido' THEN 1 ELSE 0 END) as finalizados,
+      SUM(CASE WHEN status = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
+      SUM(CASE WHEN status = 'faltou' THEN 1 ELSE 0 END) as ausentes
+    FROM appointments
+    WHERE date >= date('now', '-12 months')
+    GROUP BY month
+    ORDER BY month
+  `).all();
+
   const today = getToday();
   const todaySchedule = db.prepare(`
     SELECT a.*, c.name as client_name, e.name as employee_name, s.name as service_name,
@@ -585,6 +596,7 @@ app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => 
     plansAttended6m,
     completedAppointments,
     cancelAbsence12m,
+    atendimentos12m,
     todaySchedule
   });
 });
