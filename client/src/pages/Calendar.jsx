@@ -276,8 +276,14 @@ export default function Calendar() {
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth'
+            right: 'dayGridMonth,timeGridWeek,listWeek'
           }}
+          views={{
+            timeGridWeek: { titleFormat: { year: 'numeric', month: 'long', day: 'numeric' } },
+            listWeek: { titleFormat: { year: 'numeric', month: 'long', day: 'numeric' } }
+          }}
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
           locale={ptBrLocale}
           events={events}
           dateClick={handleDateClick}
