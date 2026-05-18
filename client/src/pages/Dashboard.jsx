@@ -67,6 +67,21 @@ export default function Dashboard() {
 
   const tooltipStyle = { borderRadius: '4px', border: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '12px' };
 
+  const periodLabel = (months) => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setMonth(start.getMonth() - months);
+    const fmt = (d) => {
+      const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      return `${meses[d.getMonth()]}/${d.getFullYear()}`;
+    };
+    return `${fmt(start)} a ${fmt(now)}`;
+  };
+
+  const Period = ({ children }) => (
+    <p style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', margin: '6px 0 0' }}>{children}</p>
+  );
+
   return (
     <div>
       <h1 style={{ fontSize: '32px', fontWeight: 300, color: '#000', margin: '0 0 24px' }}>Inteligência</h1>
@@ -104,6 +119,7 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
+          <Period>{periodLabel(6)}</Period>
         </ChartCard>
 
         {/* Cancelamentos e Ausências — 7 dias */}
@@ -121,6 +137,7 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
+          <Period>{periodLabel(0)}</Period>
         </ChartCard>
 
         {/* Planos Atendidos — 6 meses */}
@@ -136,6 +153,7 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
+          <Period>{periodLabel(6)}</Period>
         </ChartCard>
 
         {/* Ausentes e Cancelamentos — 12 meses */}
@@ -153,6 +171,7 @@ export default function Dashboard() {
               </LineChart>
             </ResponsiveContainer>
           ) : <EmptyData />}
+          <Period>{periodLabel(12)}</Period>
         </ChartCard>
       </div>
 
@@ -170,9 +189,10 @@ export default function Dashboard() {
               <Bar dataKey="cancelados" fill="#ef4444" radius={[3, 3, 0, 0]} name="Cancelados" maxBarSize={24} />
               <Bar dataKey="ausentes" fill="#f97316" radius={[3, 3, 0, 0]} name="Ausentes" maxBarSize={24} />
             </BarChart>
-          </ResponsiveContainer>
-        ) : <EmptyData />}
-      </ChartCard>
+            </ResponsiveContainer>
+          ) : <EmptyData />}
+          <Period>{periodLabel(12)}</Period>
+        </ChartCard>
     </div>
   );
 }
