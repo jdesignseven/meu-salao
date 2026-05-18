@@ -290,7 +290,7 @@ export default function Calendar() {
           eventClick={handleEventClick}
           allDaySlot={false}
           height="auto"
-          buttonText={{ today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' }}
+          buttonText={{ today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia', list: 'Lista' }}
         />
       </div>
 
