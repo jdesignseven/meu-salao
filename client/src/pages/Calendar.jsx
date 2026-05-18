@@ -530,48 +530,52 @@ function CheckboxGroup({ field, form, onChange }) {
     onChange({ ...form, [field]: next });
   };
 
+  const chipBase = {
+    display: 'inline-flex', alignItems: 'center', gap: '4px',
+    padding: '5px 10px', borderRadius: '16px', fontSize: '12px',
+    cursor: 'pointer', border: '1px solid #ddd',
+    background: '#fff', color: '#555',
+    transition: 'all 0.15s', userSelect: 'none'
+  };
+  const chipActive = { background: '#002cd6', color: '#fff', borderColor: '#002cd6' };
+  const chipDisabled = { opacity: 0.4, cursor: 'not-allowed' };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '13px' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
       {opts.map(o => {
-        if (o === 'Outro' || o === 'Outra') {
+        const checked = vals.includes(o);
+        const isNenhum = o === 'Nenhum' || o === 'Nenhuma';
+        const isOutro = o === 'Outro' || o === 'Outra';
+        const hasNenhum = vals.includes('Nenhum') || vals.includes('Nenhuma');
+        const disabled = !isNenhum && !isOutro && hasNenhum;
+
+        if (isOutro) {
           return (
-            <div key={o}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', marginBottom: '4px' }}>
-                <input type="checkbox" checked={vals.includes(o)} onChange={() => toggle(o)} />
+            <div key={o} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span onClick={() => toggle(o)}
+                style={{ ...chipBase, ...(checked ? chipActive : {}) }}>
                 {o}
-              </label>
-              {vals.includes(o) && (
-                <input
-                  type="text"
-                  value={form[outroKey] || ''}
+              </span>
+              {checked && (
+                <input type="text" value={form[outroKey] || ''}
                   onChange={e => onChange({ ...form, [outroKey]: e.target.value })}
                   placeholder="Especifique..."
-                  style={{ width: '100%', padding: '4px 6px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', boxSizing: 'border-box' }}
+                  style={{ width: '120px', padding: '4px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px' }}
                 />
               )}
             </div>
           );
         }
-        if (o === 'Nenhum' || o === 'Nenhuma') {
-          return (
-            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={vals.includes(o)} onChange={() => {
-                if (vals.includes(o)) {
-                  onChange({ ...form, [field]: [] });
-                } else {
-                  onChange({ ...form, [field]: [o] });
-                }
-              }} />
-              {o}
-            </label>
-          );
-        }
+
         return (
-          <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={vals.includes(o)} onChange={() => toggle(o)}
-              disabled={vals.includes('Nenhum') || vals.includes('Nenhuma')} />
+          <span key={o} onClick={() => { if (!disabled) toggle(o); }}
+            style={{
+              ...chipBase,
+              ...(checked ? chipActive : {}),
+              ...(disabled ? chipDisabled : {})
+            }}>
             {o}
-          </label>
+          </span>
         );
       })}
     </div>
@@ -673,6 +677,37 @@ function AnamneseSection({ client, onUpdate }) {
   const inputStyle = { width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '12px', color: '#606060', marginBottom: '4px' };
 
+  const SectionBox = ({ title, children }) => (
+    <div style={{ marginBottom: '12px', background: '#fafafa', borderRadius: '6px', padding: '12px', border: '1px solid #eee' }}>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3e50', marginBottom: '8px', paddingBottom: '6px', borderBottom: '1px solid #e0e0e0' }}>{title}</div>
+      {children}
+    </div>
+  );
+  const FieldRow = ({ children }) => <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>{children}</div>;
+  const FieldHalf = ({ children }) => <div style={{ flex: 1, minWidth: 0 }}>{children}</div>;
+  const FieldLabel = ({ children }) => <div style={labelStyle}>{children}</div>;
+
+  const ViewSection = ({ title, keys, hasGrid = true }) => {
+    const items = keys.map(key => {
+      const display = formatVal(key, form[key]);
+      if (display === null) return null;
+      return { key, label: ANAMNESE_LABELS[key], display };
+    }).filter(Boolean);
+    if (!items.length) return null;
+    return (
+      <SectionBox title={title}>
+        <div style={hasGrid ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' } : { display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {items.map(({ key, label, display }) => (
+            <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f5f5f5', borderRadius: '4px' }}>
+              <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
+              <span style={{ color: '#333' }}>{display}</span>
+            </div>
+          ))}
+        </div>
+      </SectionBox>
+    );
+  };
+
   const formatVal = (key, v) => {
     if (!isFilled(v) && key !== 'finalizadores_quais') return null;
     if (key === 'finalizadores' || key === 'transplante' || key === 'gestante') return v ? 'Sim' : 'Não';
@@ -714,36 +749,34 @@ function AnamneseSection({ client, onUpdate }) {
 
           {!editing ? (
             hasData ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {Object.entries(ANAMNESE_LABELS).map(([key, label]) => {
-                  if (key === 'finalizadores_quais' || key.startsWith('teste_mecha')) return null;
-                  const display = formatVal(key, form[key]);
-                  if (display === null) return null;
-                  return (
-                    <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
-                      <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
-                      <span style={{ color: '#333' }}>{display}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <ViewSection title="Dados do Cabelo" keys={['tipo_cabelo', 'couro_cabeludo', 'frequencia_lavagem', 'problemas']} />
+                <ViewSection title="Produtos e Tratamentos" keys={['finalizadores', 'finalizadores_quais', 'produtos', 'quimicos', 'alergias', 'transplante']} />
+                <ViewSection title="Saúde" keys={['doencas', 'medicamentos', 'gestante']} />
+                <ViewSection title="Objetivos e Observações" keys={['objetivos', 'observacoes']} hasGrid={false} />
+                {(form.teste_mecha_raiz !== 'nao_informado' || form.teste_mecha_raiz_tempo ||
+                  form.teste_mecha_meio !== 'nao_informado' || form.teste_mecha_meio_tempo ||
+                  form.teste_mecha_pontas !== 'nao_informado' || form.teste_mecha_pontas_tempo) && (
+                  <SectionBox title="Teste de Mechas">
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      {[
+                        { key: 'teste_mecha_raiz', label: 'Raiz', tempo: form.teste_mecha_raiz_tempo },
+                        { key: 'teste_mecha_meio', label: 'Meio', tempo: form.teste_mecha_meio_tempo },
+                        { key: 'teste_mecha_pontas', label: 'Pontas', tempo: form.teste_mecha_pontas_tempo }
+                      ].map(({ key, label, tempo }) => {
+                        const v = form[key];
+                        if (v === 'nao_informado' && !tempo) return null;
+                        return (
+                          <div key={key} style={{ flex: 1, fontSize: '13px', padding: '8px 10px', background: '#f5f5f5', borderRadius: '6px' }}>
+                            <div style={{ color: '#999', fontSize: '11px', marginBottom: '3px' }}>{label}</div>
+                            <div style={{ color: MECHA_COLORS[v] || '#333', fontWeight: v !== 'nao_informado' ? 600 : 400 }}>
+                              {MECHA_STATUS[v] || v}{tempo ? ` — ${tempo}min` : ''}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-                {(form.teste_mecha_raiz || form.teste_mecha_meio || form.teste_mecha_pontas) && (
-                  <>
-                    <div style={{ gridColumn: 'span 2', fontSize: '14px', fontWeight: 500, color: '#2c3e50', marginTop: '4px' }}>Teste de Mechas</div>
-                    {[
-                      { key: 'teste_mecha_raiz', label: 'Raiz', tempo: form.teste_mecha_raiz_tempo },
-                      { key: 'teste_mecha_meio', label: 'Meio', tempo: form.teste_mecha_meio_tempo },
-                      { key: 'teste_mecha_pontas', label: 'Pontas', tempo: form.teste_mecha_pontas_tempo }
-                    ].map(({ key, label, tempo }) => {
-                      const v = form[key];
-                      if (v === 'nao_informado' && !tempo) return null;
-                      return (
-                        <div key={key} style={{ fontSize: '13px', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
-                          <span style={{ color: '#999', display: 'block', fontSize: '11px', marginBottom: '2px' }}>{label}</span>
-                          <span style={{ color: MECHA_COLORS[v] || '#333', fontWeight: v !== 'nao_informado' ? 600 : 400 }}>{MECHA_STATUS[v] || v}{tempo ? ` — ${tempo}min` : ''}</span>
-                        </div>
-                      );
-                    })}
-                  </>
+                  </SectionBox>
                 )}
               </div>
             ) : (
@@ -751,136 +784,165 @@ function AnamneseSection({ client, onUpdate }) {
             )
           ) : (
             <div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Tipo de Cabelo</label>
-                  <CheckboxGroup field="tipo_cabelo" form={form} onChange={setFormField} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Couro Cabeludo</label>
-                  <CheckboxGroup field="couro_cabeludo" form={form} onChange={setFormField} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Frequência de Lavagem</label>
-                  <CheckboxGroup field="frequencia_lavagem" form={form} onChange={setFormField} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Problemas Capilares</label>
-                  <CheckboxGroup field="problemas" form={form} onChange={setFormField} />
-                </div>
-              </div>
 
-              <div style={{ borderTop: '1px solid #eee', paddingTop: '6px', marginTop: '4px' }}>
-                <label style={labelStyle}>Usa Finalizadores?</label>
-                <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                    <input type="radio" checked={form.finalizadores === true} onChange={() => handleField('finalizadores', true)} /> Sim
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                    <input type="radio" checked={form.finalizadores === false} onChange={() => handleField('finalizadores', false)} /> Não
-                  </label>
-                </div>
-              </div>
-              {form.finalizadores && (
-                <div style={{ marginBottom: '4px' }}>
-                  <input type="text" value={form.finalizadores_quais} onChange={e => handleField('finalizadores_quais', e.target.value)} placeholder="Quais?" style={inputStyle} />
-                </div>
-              )}
+              <SectionBox title="Dados do Cabelo">
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Tipo de Cabelo</FieldLabel>
+                    <CheckboxGroup field="tipo_cabelo" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                  <FieldHalf>
+                    <FieldLabel>Couro Cabeludo</FieldLabel>
+                    <CheckboxGroup field="couro_cabeludo" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                </FieldRow>
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Frequência de Lavagem</FieldLabel>
+                    <CheckboxGroup field="frequencia_lavagem" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                  <FieldHalf>
+                    <FieldLabel>Problemas Capilares</FieldLabel>
+                    <CheckboxGroup field="problemas" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                </FieldRow>
+              </SectionBox>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Produtos Utilizados</label>
-                  <CheckboxGroup field="produtos" form={form} onChange={setFormField} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Químicos / Procedimentos</label>
-                  <CheckboxGroup field="quimicos" form={form} onChange={setFormField} />
-                </div>
-              </div>
+              <SectionBox title="Produtos e Tratamentos">
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Usa Finalizadores?</FieldLabel>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
+                      {['Sim', 'Não'].map(txt => (
+                        <span key={txt} onClick={() => handleField('finalizadores', txt === 'Sim')}
+                          style={{
+                            padding: '5px 14px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer',
+                            border: '1px solid #ddd', userSelect: 'none',
+                            background: (txt === 'Sim' ? form.finalizadores === true : form.finalizadores === false) ? '#002cd6' : '#fff',
+                            color: (txt === 'Sim' ? form.finalizadores === true : form.finalizadores === false) ? '#fff' : '#555'
+                          }}>
+                          {txt}
+                        </span>
+                      ))}
+                    </div>
+                    {form.finalizadores && (
+                      <input type="text" value={form.finalizadores_quais} onChange={e => handleField('finalizadores_quais', e.target.value)}
+                        placeholder="Quais?" style={{ ...inputStyle, marginTop: '6px', width: '200px' }} />
+                    )}
+                  </FieldHalf>
+                  <FieldHalf>
+                    <FieldLabel>Já fez Transplante Capilar?</FieldLabel>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
+                      {['Sim', 'Não'].map(txt => (
+                        <span key={txt} onClick={() => handleField('transplante', txt === 'Sim')}
+                          style={{
+                            padding: '5px 14px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer',
+                            border: '1px solid #ddd', userSelect: 'none',
+                            background: (txt === 'Sim' ? form.transplante === true : form.transplante === false) ? '#002cd6' : '#fff',
+                            color: (txt === 'Sim' ? form.transplante === true : form.transplante === false) ? '#fff' : '#555'
+                          }}>
+                          {txt}
+                        </span>
+                      ))}
+                    </div>
+                  </FieldHalf>
+                </FieldRow>
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Produtos Utilizados</FieldLabel>
+                    <CheckboxGroup field="produtos" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                  <FieldHalf>
+                    <FieldLabel>Químicos / Procedimentos</FieldLabel>
+                    <CheckboxGroup field="quimicos" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                </FieldRow>
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Alergias</FieldLabel>
+                    <CheckboxGroup field="alergias" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                  <FieldHalf />
+                </FieldRow>
+              </SectionBox>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Alergias</label>
-                  <CheckboxGroup field="alergias" form={form} onChange={setFormField} />
-                </div>
-                <div style={{ flex: 1, alignSelf: 'center' }}>
-                  <label style={labelStyle}>Transplante Capilar?</label>
-                  <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                      <input type="radio" checked={form.transplante === true} onChange={() => handleField('transplante', true)} /> Sim
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                      <input type="radio" checked={form.transplante === false} onChange={() => handleField('transplante', false)} /> Não
-                    </label>
-                  </div>
-                </div>
-              </div>
+              <SectionBox title="Saúde">
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Doenças</FieldLabel>
+                    <CheckboxGroup field="doencas" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                  <FieldHalf>
+                    <FieldLabel>Medicamentos</FieldLabel>
+                    <CheckboxGroup field="medicamentos" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                </FieldRow>
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Gestante?</FieldLabel>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
+                      {['Sim', 'Não'].map(txt => (
+                        <span key={txt} onClick={() => handleField('gestante', txt === 'Sim')}
+                          style={{
+                            padding: '5px 14px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer',
+                            border: '1px solid #ddd', userSelect: 'none',
+                            background: (txt === 'Sim' ? form.gestante === true : form.gestante === false) ? '#002cd6' : '#fff',
+                            color: (txt === 'Sim' ? form.gestante === true : form.gestante === false) ? '#fff' : '#555'
+                          }}>
+                          {txt}
+                        </span>
+                      ))}
+                    </div>
+                  </FieldHalf>
+                  <FieldHalf />
+                </FieldRow>
+              </SectionBox>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Doenças</label>
-                  <CheckboxGroup field="doencas" form={form} onChange={setFormField} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Medicamentos</label>
-                  <CheckboxGroup field="medicamentos" form={form} onChange={setFormField} />
-                </div>
-              </div>
+              <SectionBox title="Objetivos e Observações">
+                <FieldRow>
+                  <FieldHalf>
+                    <FieldLabel>Objetivos</FieldLabel>
+                    <CheckboxGroup field="objetivos" form={form} onChange={setFormField} />
+                  </FieldHalf>
+                  <FieldHalf>
+                    <FieldLabel>Observações</FieldLabel>
+                    <textarea value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)}
+                      style={{ ...inputStyle, resize: 'none', minHeight: '72px' }} />
+                  </FieldHalf>
+                </FieldRow>
+              </SectionBox>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Gestante?</label>
-                  <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                      <input type="radio" checked={form.gestante === true} onChange={() => handleField('gestante', true)} /> Sim
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                      <input type="radio" checked={form.gestante === false} onChange={() => handleField('gestante', false)} /> Não
-                    </label>
-                  </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Objetivos</label>
-                  <CheckboxGroup field="objetivos" form={form} onChange={setFormField} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Observações</label>
-                  <textarea value={form.observacoes} onChange={e => handleField('observacoes', e.target.value)} style={{ ...inputStyle, resize: 'none' }} />
-                </div>
-                <div style={{ flex: 1 }} />
-              </div>
-
-              <div style={{ borderTop: '1px solid #eee', paddingTop: '6px', marginTop: '4px' }}>
-                <label style={{ ...labelStyle, fontSize: '14px', fontWeight: 500, color: '#2c3e50', marginBottom: '8px' }}>Teste de Mechas</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {['raiz', 'meio', 'pontas'].map(part => {
+              <SectionBox title="Teste de Mechas">
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {[['raiz', 'Raiz'], ['meio', 'Meio'], ['pontas', 'Pontas']].map(([part, label]) => {
                     const key = 'teste_mecha_' + part;
                     const tempoKey = key + '_tempo';
-                    const label = part === 'raiz' ? 'Raiz' : part === 'meio' ? 'Meio' : 'Pontas';
                     return (
-                      <div key={part} style={{ flex: 1 }}>
-                        <label style={labelStyle}>{label}</label>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+                      <div key={part} style={{ flex: 1, background: '#f9f9f9', borderRadius: '6px', padding: '10px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 500, color: '#333', marginBottom: '6px' }}>{label}</div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {Object.entries(MECHA_STATUS).map(([val, display]) => (
-                            <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                              <input type="radio" checked={form[key] === val} onChange={() => handleField(key, val)} />
-                              <span style={{ color: MECHA_COLORS[val], fontWeight: val !== 'nao_informado' ? 600 : 400 }}>{display}</span>
-                            </label>
+                            <span key={val} onClick={() => handleField(key, val)}
+                              style={{
+                                padding: '4px 10px', borderRadius: '12px', fontSize: '11px', cursor: 'pointer',
+                                border: '1px solid #ddd', userSelect: 'none',
+                                background: form[key] === val ? MECHA_COLORS[val] : '#fff',
+                                color: form[key] === val ? '#fff' : MECHA_COLORS[val],
+                                fontWeight: val !== 'nao_informado' ? 600 : 400
+                              }}>
+                              {display}
+                            </span>
                           ))}
                         </div>
-                        <input type="number" value={form[tempoKey]} onChange={e => handleField(tempoKey, e.target.value)} placeholder="Tempo (min)" style={{ ...inputStyle, marginTop: '6px' }} min="0" />
+                        <input type="number" value={form[tempoKey]} onChange={e => handleField(tempoKey, e.target.value)}
+                          placeholder="Tempo (min)" style={{ ...inputStyle, marginTop: '6px' }} min="0" />
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </SectionBox>
 
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
                 <button onClick={() => { setEditing(false); setMsg(''); }} style={{ padding: '8px 16px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
                 <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#002cd6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? 'Salvando...' : 'Salvar Anamnese'}</button>
               </div>
