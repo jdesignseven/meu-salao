@@ -509,6 +509,86 @@ app.get('/api/dashboard/overview', authMiddleware, requireLevel(1), (req, res) =
   });
 });
 
+// ==================== DASHBOARD CHARTS ====================
+app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => {
+  const db = getDB();
+
+  const topPlans6m = db.prepare(`
+    SELECT COALESCE(c.plan, 'Sem plano') as name, COUNT(*) as count
+    FROM appointments a
+    JOIN clients c ON a.client_id = c.id
+    WHERE a.date >= date('now', '-6 months')
+    GROUP BY c.plan
+    ORDER BY count DESC
+    LIMIT 10
+  `).all();
+
+  const cancelAbsence7d = db.prepare(`
+    SELECT date,
+      SUM(CASE WHEN status = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
+      SUM(CASE WHEN status = 'faltou' THEN 1 ELSE 0 END) as ausentes
+    FROM appointments
+    WHERE date >= date('now', '-7 days')
+      AND (status = 'cancelado' OR status = 'faltou')
+    GROUP BY date
+    ORDER BY date
+  `).all();
+
+  const newClientsMonth = db.prepare(`
+    SELECT COUNT(*) as count FROM clients
+    WHERE created_at >= date('now', '-1 month')
+  `).get();
+
+  const plansAttended6m = db.prepare(`
+    SELECT COALESCE(c.plan, 'Sem plano') as name, COUNT(*) as count
+    FROM appointments a
+    JOIN clients c ON a.client_id = c.id
+    WHERE a.date >= date('now', '-6 months')
+      AND (a.status = 'atendido' OR a.status = 'concluido')
+    GROUP BY c.plan
+    ORDER BY count DESC
+    LIMIT 10
+  `).all();
+
+  const completedAppointments = db.prepare(`
+    SELECT COUNT(*) as count FROM appointments
+    WHERE status = 'concluido' OR status = 'atendido'
+  `).get();
+
+  const cancelAbsence12m = db.prepare(`
+    SELECT substr(date, 1, 7) as month,
+      SUM(CASE WHEN status = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
+      SUM(CASE WHEN status = 'faltou' THEN 1 ELSE 0 END) as ausentes
+    FROM appointments
+    WHERE date >= date('now', '-12 months')
+      AND (status = 'cancelado' OR status = 'faltou')
+    GROUP BY month
+    ORDER BY month
+  `).all();
+
+  const today = getToday();
+  const todaySchedule = db.prepare(`
+    SELECT a.*, c.name as client_name, e.name as employee_name, s.name as service_name,
+           COALESCE(c.plan, '') as client_plan
+    FROM appointments a
+    LEFT JOIN clients c ON a.client_id = c.id
+    LEFT JOIN employees e ON a.employee_id = e.id
+    LEFT JOIN services s ON a.service_id = s.id
+    WHERE a.date = ?
+    ORDER BY a.time ASC
+  `).all(today);
+
+  res.json({
+    topPlans6m,
+    cancelAbsence7d,
+    newClientsMonth,
+    plansAttended6m,
+    completedAppointments,
+    cancelAbsence12m,
+    todaySchedule
+  });
+});
+
 // ==================== FINANCIAL ====================
 app.get('/api/financial/transactions', authMiddleware, requireLevel(2), (req, res) => {
   const db = getDB();
