@@ -122,22 +122,23 @@ export default function Dashboard() {
           <Period>{periodLabel(6)}</Period>
         </ChartCard>
 
-        {/* Cancelamentos e Ausências — 7 dias */}
-        <ChartCard title="Cancelamentos e Ausências — Últimos 7 Dias">
-          {charts.cancelAbsence7d.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={charts.cancelAbsence7d} margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v?.substring(5) || ''} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="cancelados" fill="#ef4444" radius={[3, 3, 0, 0]} name="Cancelados" maxBarSize={20} />
-                <Bar dataKey="ausentes" fill="#f97316" radius={[3, 3, 0, 0]} name="Ausentes" maxBarSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyData />}
-          <Period>{periodLabel(0)}</Period>
+        {/* Aniversariantes — 30 dias */}
+        <ChartCard title="Aniversariantes nos Próximos 30 Dias">
+          {charts.nextBirthdays?.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {charts.nextBirthdays.map(c => (
+                <div key={c.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '6px 10px', background: '#f9f9f9', borderRadius: '4px', fontSize: '13px'
+                }}>
+                  <span style={{ fontWeight: 600, color: '#e91e63', minWidth: '28px' }}>{c.daysUntil}d</span>
+                  <span style={{ flex: 1, color: '#000' }}>{c.name}</span>
+                  <span style={{ color: '#888', fontSize: '12px' }}>{c.age} anos</span>
+                  <span style={{ color: '#888', fontSize: '12px' }}>{new Date(c.birth_date).toLocaleDateString('pt-BR')}</span>
+                </div>
+              ))}
+            </div>
+          ) : <EmptyData height="auto" text="Nenhum aniversariante nos próximos 30 dias" />}
         </ChartCard>
 
         {/* Planos Atendidos — 6 meses */}
@@ -214,6 +215,6 @@ export default function Dashboard() {
   );
 }
 
-function EmptyData() {
-  return <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '13px' }}>Sem dados para o período</div>;
+function EmptyData({ height, text }) {
+  return <div style={{ height: height || '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '13px' }}>{text || 'Sem dados para o período'}</div>;
 }

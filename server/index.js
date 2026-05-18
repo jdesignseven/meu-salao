@@ -555,6 +555,24 @@ app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => 
     WHERE status = 'concluido' OR status = 'atendido'
   `).get();
 
+  const allBirthdays = db.prepare(`
+    SELECT id, name, birth_date, phone FROM clients
+    WHERE birth_date != '' AND birth_date IS NOT NULL
+  `).all();
+
+  const now = new Date();
+  const currentDoy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  const nextBirthdays = allBirthdays
+    .map(c => {
+      const bd = new Date(c.birth_date);
+      const doy = Math.floor((bd - new Date(bd.getFullYear(), 0, 0)) / 86400000);
+      let daysUntil = doy - currentDoy;
+      if (daysUntil < 0) daysUntil += 365;
+      return { ...c, daysUntil, age: now.getFullYear() - bd.getFullYear() };
+    })
+    .filter(c => c.daysUntil >= 0 && c.daysUntil <= 30)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+
   const cancelAbsence12m = db.prepare(`
     SELECT substr(date, 1, 7) as month,
       SUM(CASE WHEN status = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
@@ -612,6 +630,7 @@ app.get('/api/dashboard/charts', authMiddleware, requireLevel(1), (req, res) => 
     newClientsMonth,
     plansAttended6m,
     completedAppointments,
+    nextBirthdays,
     cancelAbsence12m,
     atendimentos12m,
     clientsAgeGender,
